@@ -2,16 +2,22 @@
 import datetime, json, math, pathlib, shutil, struct, urllib.parse, urllib.request, zlib
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 SITE=ROOT/'site'; CACHE=ROOT/'.cache'/'game-v2';CACHE.mkdir(parents=True,exist_ok=True)
-BBOX=(34.065,47.638,34.122,47.676)
-UA='Game/0.2 (https://github.com/NMVAA/Game; static map snapshot)'
+BBOX=(34.065,47.638,34.132,47.676)
+BASE_BBOX=(34.065,47.638,34.122,47.676)
+FOCUS_BBOX=(34.113,47.649,34.132,47.664)  # Centralna 59 ↔ Lyceum 6 neighbourhood
+UA='Game/0.4 (https://github.com/NMVAA/Game; OSM neighbourhood snapshot)'
 def get(url,timeout=35):
     req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'application/json, text/javascript, */*'})
     with urllib.request.urlopen(req,timeout=timeout) as r:return r.read(32_000_000)
 def normalize(data):
     elements=data.get('elements',[]);nodes={e['id']:e for e in elements if e.get('type')=='node'};out=[]
-    keep={'highway','name','name:uk','width','lanes','oneway','access','area','building','building:levels','height','leisure','natural','landuse'}
+    keep={'highway','name','name:uk','width','lanes','oneway','access','area','building','building:levels','height','leisure','natural','landuse','addr:street','addr:housenumber','amenity','footway','sidewalk','crossing','surface','lit','entrance','barrier'}
     for e in elements:
         t=e.get('tags',{})
+        if e.get('type')=='node' and ('addr:housenumber' in t or t.get('amenity') in ('school','kindergarten','library','marketplace')):
+            if isinstance(e.get('lat'),(int,float)) and isinstance(e.get('lon'),(int,float)):
+                out.append({'type':'node','id':e['id'],'lat':e['lat'],'lon':e['lon'],'tags':{k:v for k,v in t.items() if k in keep}})
+            continue
         if e.get('type')!='way' or not any(k in t for k in ('highway','building','leisure','natural','landuse')):continue
         raw=e.get('geometry') or [nodes.get(n) for n in e.get('nodes',[])]
         if len(raw)<2 or any(not p or not isinstance(p.get('lat'),(int,float)) or not isinstance(p.get('lon'),(int,float)) for p in raw):continue
@@ -22,18 +28,60 @@ def normalize(data):
     roads=sum('highway' in e['tags'] for e in out);buildings=sum('building' in e['tags'] for e in out)
     if roads<20 or buildings<10:raise ValueError(f'Incomplete map: {roads} roads, {buildings} buildings')
     return {'version':.6,'generator':'Game static snapshot','copyright':'© OpenStreetMap contributors','license':'https://opendatacommons.org/licenses/odbl/1-0/','metadata':{'bbox':BBOX,'prepared_at':datetime.datetime.now(datetime.timezone.utc).isoformat()},'elements':out}
+def focus_roads(data):
+    # Verify actual mapped street geometry in the eastern part of the requested area.
+    return sum(
+        1 for e in data.get('elements',[])
+        if e.get('type')=='way' and 'highway' in e.get('tags',{})
+        and any(p.get('lon',0)>34.123 and 47.650<p.get('lat',0)<47.665 for p in e.get('geometry',[]))
+    )
+def sources(bbox,query):
+    return [
+        'https://api.openstreetmap.org/api/0.6/map.json?bbox='+','.join(map(str,bbox)),
+        'https://overpass-api.de/api/interpreter?'+urllib.parse.urlencode({'data':query}),
+        'https://overpass.kumi.systems/api/interpreter?'+urllib.parse.urlencode({'data':query})
+    ]
+def merge(base,more):
+    # Merge by stable OSM object ID so roads crossing the two map extracts are not duplicated.
+    features={(e['type'],e['id']):e for e in base['elements']}
+    for item in more['elements']:features[(item['type'],item['id'])]=item
+    return normalize({'elements':list(features.values())})
 def map_data():
+    previous=None
     for path in [ROOT/'map'/'pokrov.json',CACHE/'pokrov.json']:
         if path.is_file():
-            try:return normalize(json.loads(path.read_text()))
-            except Exception as e:print(f'Ignoring invalid cache: {e}')
-    query='[out:json][timeout:30];(way["highway"](47.638,34.065,47.676,34.122);way["building"](47.638,34.065,47.676,34.122);way["leisure"="park"](47.638,34.065,47.676,34.122);way["natural"="water"](47.638,34.065,47.676,34.122););out geom;'
-    sources=['https://nmvaa.github.io/Game/map/pokrov.json','https://api.openstreetmap.org/api/0.6/map.json?bbox='+','.join(map(str,BBOX)),'https://overpass-api.de/api/interpreter?'+urllib.parse.urlencode({'data':query}),'https://overpass.kumi.systems/api/interpreter?'+urllib.parse.urlencode({'data':query})]
-    for url in sources:
+            try:
+                candidate=normalize(json.loads(path.read_text()))
+                if focus_roads(candidate)>=5:return candidate
+                previous=candidate
+            except Exception as e:print(f'Ignoring invalid cache: {e}',flush=True)
+    base_query='[out:json][timeout:40];(way["highway"](47.638,34.065,47.676,34.122);way["building"](47.638,34.065,47.676,34.122);way["leisure"="park"](47.638,34.065,47.676,34.122);way["natural"="water"](47.638,34.065,47.676,34.122););out geom;'
+    base_urls=['https://nmvaa.github.io/Game/map/pokrov.json']+sources(BASE_BBOX,base_query)
+    if previous is None:
+        for url in base_urls:
+            try:
+                print('Base map source:',url.split('?')[0],flush=True)
+                previous=normalize(json.loads(get(url)))
+                break
+            except Exception as e:print('Base source unavailable:',str(e)[:220],flush=True)
+    if previous is None:raise RuntimeError('No valid base OSM map. Existing deployed site remains unchanged.')
+    if focus_roads(previous)>=5:
+        (CACHE/'pokrov.json').write_text(json.dumps(previous,separators=(',',':'),ensure_ascii=False))
+        return previous
+    # The original map stopped at 34.122 E, before Centralna 59.
+    # Fetch a smaller adjacent extract rather than downloading a huge full-city export.
+    q='[out:json][timeout:40];(way["highway"](47.649,34.113,47.664,34.132);way["building"](47.649,34.113,47.664,34.132);way["leisure"](47.649,34.113,47.664,34.132);way["natural"="water"](47.649,34.113,47.664,34.132);node["addr:housenumber"](47.649,34.113,47.664,34.132);node["amenity"="school"](47.649,34.113,47.664,34.132););out geom;'
+    for url in sources(FOCUS_BBOX,q):
         try:
-            print('Map source:',url.split('?')[0],flush=True);data=normalize(json.loads(get(url)));(CACHE/'pokrov.json').write_text(json.dumps(data,separators=(',',':'),ensure_ascii=False));return data
-        except Exception as e:print('Source unavailable:',str(e)[:240],flush=True)
-    raise RuntimeError('No valid OSM snapshot. Deployment stopped; existing public site is unchanged.')
+            print('Neighbourhood map source:',url.split('?')[0],flush=True)
+            detail=normalize(json.loads(get(url,timeout=45)))
+            result=merge(previous,detail)
+            if focus_roads(result)<5:raise ValueError('Map does not cover Centralna 59 neighbourhood')
+            (CACHE/'pokrov.json').write_text(json.dumps(result,separators=(',',':'),ensure_ascii=False))
+            print('East-side detail: ',focus_roads(result),'roads; source validated',flush=True)
+            return result
+        except Exception as e:print('Neighbourhood source unavailable:',str(e)[:250],flush=True)
+    raise RuntimeError('Real OSM corridor to Centralna 59 unavailable; refusing to publish an invented route.')
 def vendor():
     path=CACHE/'three-0.170.0.module.js'
     if path.is_file() and path.stat().st_size>100000:return path.read_bytes()
