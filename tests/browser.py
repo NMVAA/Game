@@ -54,6 +54,9 @@ with tempfile.TemporaryDirectory() as folder:
             assert abs(back_to_start['x']-walker_at_start['x'])<.001 and abs(back_to_start['z']-walker_at_start['z'])<.001
             page.screenshot(path=str(OUTPUT/'03-school-route-portrait.png'))
             # Return to the nearby parked vehicle and test driving controls.
+            parked=page.evaluate('window.__GAME_TEST__.state')
+            separation=((back_to_start['x']-parked['x'])**2+(back_to_start['z']-parked['z'])**2)**0.5
+            assert separation<=5.35, {'walker_to_car':separation,'walker':back_to_start,'car':parked}
             page.locator('#enter-car').click()
             assert page.evaluate('window.__GAME_TEST__.inCar') is True
             rect=page.locator('#gas').bounding_box()
