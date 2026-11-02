@@ -19,18 +19,37 @@ with tempfile.TemporaryDirectory() as folder:
             page.screenshot(path=str(OUTPUT/'01-menu-portrait.png'))
             page.locator('#start').click();page.wait_for_timeout(700)
             assert page.evaluate('window.__GAME_TEST__.paused') is False
-            # A held pedal must work and pointer capture must release correctly.
-            rect=page.locator('#gas').bounding_box();page.mouse.move(rect['x']+rect['width']/2,rect['y']+rect['height']/2);page.mouse.down()
-            # Wait on simulation progress: software WebGL rendering is not real-time.
-            page.wait_for_function('window.__GAME_TEST__.state.travel > 2',timeout=45000)
+            # First-person walking is the default mobile game mode.
+            assert page.evaluate('window.__GAME_TEST__.inCar') is False
+            assert page.locator('#walkcontrols').is_visible()
+            stick=page.locator('#walkpad').bounding_box()
+            page.mouse.move(stick['x']+stick['width']*.5,stick['y']+stick['height']*.18)
+            page.mouse.down()
+            # Software-rendered WebGL can progress slower than wall-clock time.
+            page.wait_for_function('window.__GAME_TEST__.walker.travel > 1',timeout=90000)
+            page.mouse.up()
+            walker=page.evaluate('window.__GAME_TEST__.walker')
+            assert walker['travel']>1,walker
+            page.screenshot(path=str(OUTPUT/'02-walk-portrait.png'))
+            # A world drag must rotate the first-person camera.
+            yaw=walker['yaw'];surface=page.locator('#scene').bounding_box()
+            x=surface['x']+surface['width']*.7;y=surface['y']+surface['height']*.55
+            page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+52,y+17,steps=5);page.mouse.up()
+            assert abs(page.evaluate('window.__GAME_TEST__.walker.yaw')-yaw)>.05
+            # Return to the nearby parked vehicle and test driving controls.
+            page.locator('#enter-car').click()
+            assert page.evaluate('window.__GAME_TEST__.inCar') is True
+            rect=page.locator('#gas').bounding_box()
+            page.mouse.move(rect['x']+rect['width']/2,rect['y']+rect['height']/2);page.mouse.down()
+            page.wait_for_function('window.__GAME_TEST__.state.travel > 2',timeout=60000)
             page.mouse.up()
             state=page.evaluate('window.__GAME_TEST__.state');assert state['travel']>2,state
-            page.screenshot(path=str(OUTPUT/'02-drive-portrait.png'))
+            page.screenshot(path=str(OUTPUT/'03-drive-portrait.png'))
             page.locator('#pause').click();assert page.evaluate('window.__GAME_TEST__.paused') is True
             page.locator('#quality').select_option('low');page.locator('#night').click();page.locator('#resume').click();page.wait_for_timeout(700)
-            page.screenshot(path=str(OUTPUT/'03-night-portrait.png'))
+            page.screenshot(path=str(OUTPUT/'04-night-portrait.png'))
             page.set_viewport_size({'width':844,'height':390});page.wait_for_timeout(500)
-            page.screenshot(path=str(OUTPUT/'04-drive-landscape.png'))
+            page.screenshot(path=str(OUTPUT/'05-drive-landscape.png'))
             for selector in ['#gas','#brake','#steering','#pause']:
                 box=page.locator(selector).bounding_box();assert box and box['x']>=0 and box['y']>=0 and box['x']+box['width']<=845 and box['y']+box['height']<=391,(selector,box)
             page.locator('#pause').click();page.locator('#mode').select_option('free');page.locator('#resume').click();page.wait_for_timeout(300)
@@ -38,9 +57,9 @@ with tempfile.TemporaryDirectory() as folder:
             page.wait_for_function('navigator.serviceWorker.controller !== null',timeout=60000)
             # No CDN or Overpass request is required after installation.
             ctx.set_offline(True);page.reload(wait_until='domcontentloaded');page.wait_for_function('window.__GAME_TEST__?.ready === true',timeout=90000)
-            page.locator('#start').click();page.screenshot(path=str(OUTPUT/'05-offline.png'));ctx.set_offline(False)
+            page.locator('#start').click();page.screenshot(path=str(OUTPUT/'06-offline.png'));ctx.set_offline(False)
             assert not errors,errors
-            report={'status':'passed','map':data,'state_after_drive':state,'offline_reload':True,'javascript_errors':errors,'render':page.evaluate('window.__GAME_TEST__.render')}
+            report={'status':'passed','map':data,'state_after_walk':walker,'state_after_drive':state,'offline_reload':True,'javascript_errors':errors,'render':page.evaluate('window.__GAME_TEST__.render')}
             (OUTPUT/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print(json.dumps(report,ensure_ascii=False))
         except Exception:
             page.screenshot(path=str(OUTPUT/'failure.png'));(OUTPUT/'errors.json').write_text(json.dumps(errors,ensure_ascii=False));raise
