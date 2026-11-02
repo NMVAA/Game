@@ -1,7 +1,7 @@
 import {VERSION,clamp,lerp,finite,seeded,distance,nearestPoint,parseMap,closestRoad,nearestNode,findRoute,chooseMission,createState,spawnAt,stepVehicle,collisionAt} from './core.mjs';
 import {T,setupScene,buildWorld,makeCar,makeBeacon} from './world.mjs';
 import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker} from './walking.mjs';
-import {buildNeighborhoodRoute,routeProgress} from './neighborhood.mjs';
+import {buildNeighborhoodRoute,routeProgress,startNearHouse59} from './neighborhood.mjs';
 import {makeNeighborhoodOverlay} from './neighborhood-scene.mjs';
 const $=id=>document.getElementById(id), canvas=$('scene'), ui={speed:$('speed'),gear:$('gear'),fuel:$('fuel'),health:$('health'),funds:$('funds')};
 const engine=setupScene(canvas),{renderer,scene,camera}=engine;
@@ -15,7 +15,7 @@ let quality='auto',pixelRatio=Math.min(devicePixelRatio,1.25),audio=null,soundOn
 const keys=new Set(),held=new Map(),controls={steer:0,gas:false,brake:false,handbrake:false},traffic=[],rng=seeded(8451);
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function notice(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('toast').classList.remove('show'),3300);}
-function save(){try{localStorage.setItem('game-save-v2',JSON.stringify({version:VERSION,money:state.money,goal:state.goal,fuel:state.fuel,health:state.health,engine:state.engine,tires:state.tires,travel:state.travel,walkTravel:walker.travel,walkX:walker.x,walkZ:walker.z,walkYaw:walker.yaw,tourVersion:'0.4.0',tourActive,tourComplete}));}catch{}}
+function save(){try{localStorage.setItem('game-save-v2',JSON.stringify({version:VERSION,money:state.money,goal:state.goal,fuel:state.fuel,health:state.health,engine:state.engine,tires:state.tires,travel:state.travel,walkTravel:walker.travel,walkX:walker.x,walkZ:walker.z,walkYaw:walker.yaw,tourVersion:'0.4.1',tourActive,tourComplete}));}catch{}}
 function resize(){const w=innerWidth,h=innerHeight;renderer.setPixelRatio(pixelRatio);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
 resize();addEventListener('resize',resize);
 function applyQuality(){pixelRatio=quality==='high'?Math.min(devicePixelRatio,1.75):quality==='low'?Math.min(devicePixelRatio,1):Math.min(devicePixelRatio,1.25);renderer.shadowMap.enabled=quality!=='low';engine.sun.shadow.mapSize.set(quality==='high'?2048:1024,quality==='high'?2048:1024);engine.sun.shadow.map?.dispose();engine.sun.shadow.map=null;resize();}
@@ -46,20 +46,15 @@ function modeUI(){const onFoot=!inCar;document.body.classList.toggle('is-walking
   beacon.group.visible=inCar&&!free;$('mode').value=onFoot?'walk':free?'free':'delivery';
 }
 function restartNeighbourhoodTour(){
-  if(!neighborhood||!world){notice('Детальна карта маршруту ще не готова.');return;}
-  const route=neighborhood.route,first=route[0],next=route[1];
-  const dx=next.x-first.x,dz=next.z-first.z,len=Math.max(.01,Math.hypot(dx,dz));
-  const nx=dz/len,nz=-dx/len;
-  let placed=false;
-  for(const offset of [3.4,-3.4,5.5,-5.5,8,-8]){
-    const p={x:first.x+nx*offset,z:first.z+nz*offset};
-    if(!collisionAt(world,p,.45)&&distance(p,state)>2.25){walker.x=p.x;walker.z=p.z;placed=true;break;}
-  }
-  if(!placed){const safe=route.find(p=>!collisionAt(world,p,.45)&&distance(p,state)>2.25)||first;walker.x=safe.x;walker.z=safe.z;}
-  walker.yaw=Math.atan2(dx,dz);
-  walker.pitch=0;walker.vx=walker.vz=walker.vertical=walker.vy=0;walker.speed=0;
+  if(!neighborhood?.startSpot||!world){notice('Старт біля Центральної, 59 ще не завантажився.');return;}
+  const spot=neighborhood.startSpot;
+  const p=spot.walker;
+  if(collisionAt(world,p,.44)){notice('Місце старту зайняте. Повтори завантаження карти.');return;}
+  walker.x=p.x;walker.z=p.z;walker.yaw=p.yaw;walker.pitch=0;
+  walker.vx=walker.vz=walker.vertical=walker.vy=0;walker.speed=0;
   tourActive=true;tourComplete=false;neighborhoodView?.setVisible(true);
-  $('tour-free').textContent='ВІЛЬНИЙ ОГЛЯД';save();updateTourHUD();notice('Маршрут від Центральної, 59 до ліцею №6.');
+  $('tour-free').textContent='ВІЛЬНИЙ ОГЛЯД';save();updateTourHUD();
+  notice('Ти біля будинку №59 на Центральній. Іди до ліцею №6.');
 }
 $('tour-restart').onclick=restartNeighbourhoodTour;
 $('tour-free').onclick=()=>{
@@ -140,7 +135,8 @@ function updateTourHUD(){
   $('tour-distance').textContent=tourComplete?'ГОТОВО':Math.max(0,Math.round(p.remaining+neighborhood.endOffset))+' м';
   $('tour-hint').textContent=tourComplete?'Ти дістався ліцею №6!':tourActive?p.hint:'Вільний огляд району';
   $('tour-progress').style.width=Math.round((tourComplete?1:p.progress)*100)+'%';
-  $('tour-accuracy').textContent=neighborhood.home.precision==='mapped'?'№59 знайдено в OSM; фасади і декор процедурні.':'№59 — орієнтовний орієнтир; фасади і декор процедурні.';
+  const d=neighborhood.startSpot?.distanceToHome;
+  $('tour-accuracy').textContent=(neighborhood.home.precision==='mapped'?'№59 з OpenStreetMap':'№59 — орієнтовна адреса')+(Number.isFinite(d)?' · старт приблизно за '+Math.round(d)+' м':'')+'; не точний вхід.';
 }
 function updateHud(){if(!inCar){const road=closestRoad(world,walker,60);$('walkstreet').textContent=road?.distance<30?road.road.name:'Вільна прогулянка';$('walkdistance').textContent=Math.round(walker.travel)+' м';$('walkpace').textContent=walker.speed>3.25?'Біг':'Ходьба';$('stamina').value=walker.stamina;const d=Math.round(distance(walker,state));$('enter-car').textContent=d<5.4?'СІСТИ В АВТО':'АВТО · '+d+' м';updateTourHUD();drawMini();return;}const kph=Math.round(Math.abs(state.speed)*3.6);ui.speed.textContent=kph;ui.gear.textContent=state.speed<-.4?'R':kph<2?'N':Math.min(6,1+Math.floor(kph/28));ui.fuel.value=state.fuel;ui.health.value=state.health;ui.funds.textContent=Math.round(state.money).toLocaleString('uk-UA')+' ₴';$('fps').textContent=`${Math.round(fps)} FPS`;
   const road=closestRoad(world,state,85);$('street').textContent=road?.distance<30?road.road.name:'Поза дорогою';if(free){$('mission-name').textContent='Вільна поїздка';$('distance').textContent=(state.travel/1000).toFixed(1)+' км';$('countdown').textContent='';$('routehint').textContent='Досліджуй місто';$('arrival').style.width='0%';}else{nav();$('mission-name').textContent=mission.target.name;$('distance').textContent=navDist>999?(navDist/1000).toFixed(1)+' км':Math.round(navDist)+' м';$('countdown').textContent=remaining>0?`${Math.floor(remaining/60)}:${String(Math.floor(remaining%60)).padStart(2,'0')}`:'БЕЗ БОНУСУ';$('arrival').style.width=`${Math.min(100,arrival*100)}%`;}drawMini();}
@@ -176,19 +172,29 @@ async function load(){ready=false;$('start').disabled=true;$('retry').hidden=tru
     try{neighborhood=buildNeighborhoodRoute(world,data);}catch(err){console.warn('Neighbourhood tour unavailable:',err);neighborhood=null;}
     $('loadstatus').textContent='Створюємо дороги, будівлі та зелені зони…';
     worldView=await buildWorld(scene,world,p=>$('loadbar').style.width=`${25+p*70}%`);
-    neighborhoodView=makeNeighborhoodOverlay(scene,world,neighborhood,data);
-    tourActive=saved.tourVersion==='0.4.0'?saved.tourActive!==false:true;
-    tourComplete=saved.tourVersion==='0.4.0'&&!!saved.tourComplete;
+    // The route overlay is placed after the safe spawn is resolved below.
+    tourActive=true;
+    tourComplete=false;
     neighborhoodView?.setVisible(tourActive);
     if(neighborhood){
-      const a=neighborhood.route[0],b=neighborhood.route[1];
-      spawnAt(state,{x:a.x,z:a.z,angle:Math.atan2(b.x-a.x,b.z-a.z)});
+      const spot=startNearHouse59(world,neighborhood);
+      neighborhood.startSpot=spot;
+      spawnAt(state,spot.car);
     }else spawnAt(state,world.spawn);
+    neighborhoodView=makeNeighborhoodOverlay(scene,world,neighborhood,data);
+    neighborhoodView?.setVisible(tourActive);
     if(collisionAt(world,state,2)){const id=world.component.find(id=>!collisionAt(world,world.nodes.get(id),2));if(id){const p=world.nodes.get(id),n=world.nodes.get(world.graph.get(id)[0]);spawnAt(state,{...p,angle:Math.atan2(n.x-p.x,n.z-p.z)});}}
-    player.group.position.set(state.x,0,state.z);player.group.rotation.y=state.angle;placeWalker(walker,state,world);if(saved.tourVersion==='0.4.0'&&Number.isFinite(saved.walkX)&&Number.isFinite(saved.walkZ)){const pos={x:saved.walkX,z:saved.walkZ};if(pos.x>world.bounds.minX+.5&&pos.x<world.bounds.maxX-.5&&pos.z>world.bounds.minZ+.5&&pos.z<world.bounds.maxZ-.5&&!collisionAt(world,pos,.35)){walker.x=pos.x;walker.z=pos.z;walker.yaw=finite(saved.walkYaw,state.angle);}}walker.travel=Math.max(0,finite(saved.walkTravel,0));nextMission();makeTraffic();prepareMini();camera.position.set(walker.x,EYE_HEIGHT,walker.z);modeUI();ready=true;
+    player.group.position.set(state.x,0,state.z);player.group.rotation.y=state.angle;
+    if(neighborhood?.startSpot){
+      Object.assign(walker,{x:neighborhood.startSpot.walker.x,z:neighborhood.startSpot.walker.z,yaw:neighborhood.startSpot.walker.yaw,pitch:0,vx:0,vz:0,speed:0,vertical:0,vy:0});
+    }else placeWalker(walker,state,world);
+    // Always begin a fresh game beside house 59, even if the previous version
+    // saved the player elsewhere; keep cumulative distance and rewards.
+    walker.travel=Math.max(0,finite(saved.walkTravel,0));
+    nextMission();makeTraffic();prepareMini();camera.position.set(walker.x,EYE_HEIGHT,walker.z);modeUI();ready=true;
     const meta=`${world.roads.length} доріг · ${world.buildings.length} будівель`;$('loadstatus').textContent=`Місто готове. ${meta}.`;$('mapdetails').textContent=`Карта: Покров, OpenStreetMap. ${meta}. Район Центральної, 59 та ліцею №6. Фасади й декор процедурні. Версія ${VERSION}.`;$('mapstate').textContent=neighborhood?'ЦЕНТРАЛЬНА 59 → ЛІЦЕЙ 6':'ПОКРОВ / OSM';$('loadbar').style.width='100%';$('start').disabled=false;$('start').textContent=neighborhood?'ПОЧАТИ МАРШРУТ →':'ПОЧАТИ ПРОГУЛЯНКУ →';
   }catch(error){console.error(error);$('loadstatus').textContent=error.name==='AbortError'?'Сервер карти не відповів. Повтори завантаження.':error.message+' Вигадану карту не підставлено.';$('retry').hidden=false;$('start').textContent='КАРТА НЕ ГОТОВА';$('mapstate').textContent='ПОМИЛКА КАРТИ';}}
 $('retry').onclick=()=>location.reload();$('start').onclick=()=>{if(!ready)return;started=true;paused=false;$('boot').hidden=true;$('hud').hidden=false;audioStart();clearInput();updateHud();};
 if('serviceWorker'in navigator&&isSecureContext){navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});if(reg.waiting)notice('Є нова версія. Перезавантаж Game.');}).catch(e=>console.warn('PWA cache unavailable',e));}
-if(new URLSearchParams(location.search).has('test'))window.__GAME_TEST__={get ready(){return ready;},get paused(){return paused;},get state(){return {...state};},get walker(){return {...walker};},get inCar(){return inCar;},get render(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles};},get map(){return world?{roads:world.roads.length,buildings:world.buildings.length,nodes:world.component.length}:null;},get tour(){return neighborhood?{length:neighborhood.length,startOffset:neighborhood.startOffset,endOffset:neighborhood.endOffset,points:neighborhood.route.length,precision:neighborhood.home.precision,type:neighborhood.routeType}:null;}};
+if(new URLSearchParams(location.search).has('test'))window.__GAME_TEST__={get ready(){return ready;},get paused(){return paused;},get state(){return {...state};},get walker(){return {...walker};},get inCar(){return inCar;},get render(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles};},get map(){return world?{roads:world.roads.length,buildings:world.buildings.length,nodes:world.component.length}:null;},get tour(){return neighborhood?{length:neighborhood.length,startOffset:neighborhood.startOffset,endOffset:neighborhood.endOffset,points:neighborhood.route.length,precision:neighborhood.home.precision,type:neighborhood.routeType,spawnDistance:neighborhood.startSpot?.distanceToHome,spawnSource:neighborhood.startSpot?.source,home:neighborhood.home}:null;}};
 requestAnimationFrame(frame);load();
