@@ -1,6 +1,6 @@
 {
-  "name": "Покров 3D: Експедиція",
-  "short_name": "Покров 3D",
+  "name": "Game",
+  "short_name": "Game",
   "lang": "uk",
   "start_url": "./index.html",
   "scope": "./",
