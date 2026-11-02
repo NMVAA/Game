@@ -45,3 +45,26 @@ body.is-walking #walkpad{cursor:move}
  .walkactions #enter-car{min-height:33px}
  #exit-car{bottom:110px;left:120px}
 }
+
+/* Game 0.4: pedestrian route HUD. Navigation is game guidance, not a surveyed footpath. */
+#tourcard{position:absolute;left:14px;top:calc(207px + env(safe-area-inset-top,0px));width:min(240px,64vw);padding:12px 13px 11px;background:rgba(11,27,32,.89);border:1px solid #a9e8d550;border-radius:14px;box-shadow:0 7px 24px #0006;pointer-events:none}
+#tourcard strong{display:block;margin:6px 0 7px;font-size:13px;line-height:1.3;color:#e9f5e9}
+.tourmeta{display:flex;flex-direction:column;gap:3px}.tourmeta b{font-size:24px;color:#f4c97d;font-weight:750;letter-spacing:-.7px}.tourmeta span{font-size:11px;color:#d9e9e2;line-height:1.4}
+.tourline{height:4px;border-radius:6px;overflow:hidden;background:#ffffff26;margin:11px 0 7px}
+.tourline i{display:block;height:100%;width:0;background:linear-gradient(90deg,#90d6d2,#f4c97d);transition:width .15s}
+#tour-accuracy{display:block;font-size:9px;line-height:1.45;color:#aebdb9}
+.tourbuttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;pointer-events:auto}
+.tourbuttons button{min-height:37px;padding:7px 4px;font-size:9px;font-weight:750;letter-spacing:.35px;background:#234440d9;border-color:#a9e8d566;-webkit-touch-callout:none;touch-action:manipulation}
+#tour-free{background:#1b3038d9}
+body.is-walking #navigation{top:auto;bottom:calc(181px + var(--safe));right:14px;width:116px}
+body.is-walking #navigation #street{font-size:9px}
+@media(max-width:380px){#tourcard{width:205px;padding:10px}#tourcard strong{font-size:12px}.tourbuttons button{font-size:8px}body.is-walking #navigation{width:104px}}
+@media(max-height:500px) and (orientation:landscape){
+  #tourcard{left:230px;right:auto;top:57px;width:210px;padding:8px 10px}
+  #tourcard strong{font-size:11px;margin:2px 0}
+  .tourmeta b{font-size:16px}.tourmeta span{font-size:9px}
+  .tourline{margin:5px 0}.tourbuttons{margin-top:5px}
+  .tourbuttons button{min-height:27px;font-size:8px}
+  #tour-accuracy{font-size:8px}
+  body.is-walking #navigation{right:176px;bottom:calc(15px + var(--safe));width:88px}
+}
