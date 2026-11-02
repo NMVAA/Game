@@ -14,7 +14,7 @@ def normalize(data):
     keep={'highway','name','name:uk','width','lanes','oneway','access','area','building','building:levels','height','leisure','natural','landuse','addr:street','addr:housenumber','amenity','footway','sidewalk','crossing','surface','lit','entrance','barrier'}
     for e in elements:
         t=e.get('tags',{})
-        if e.get('type')=='node' and ('addr:housenumber' in t or t.get('amenity') in ('school','kindergarten','library','marketplace')):
+        if e.get('type')=='node' and ('addr:housenumber' in t or t.get('amenity') in ('school','kindergarten','library','marketplace') or t.get('highway')=='crossing'):
             if isinstance(e.get('lat'),(int,float)) and isinstance(e.get('lon'),(int,float)):
                 out.append({'type':'node','id':e['id'],'lat':e['lat'],'lon':e['lon'],'tags':{k:v for k,v in t.items() if k in keep}})
             continue
@@ -70,7 +70,7 @@ def map_data():
         return previous
     # The original map stopped at 34.122 E, before Centralna 59.
     # Fetch a smaller adjacent extract rather than downloading a huge full-city export.
-    q='[out:json][timeout:40];(way["highway"](47.649,34.113,47.664,34.132);way["building"](47.649,34.113,47.664,34.132);way["leisure"](47.649,34.113,47.664,34.132);way["natural"="water"](47.649,34.113,47.664,34.132);node["addr:housenumber"](47.649,34.113,47.664,34.132);node["amenity"="school"](47.649,34.113,47.664,34.132););out geom;'
+    q='[out:json][timeout:40];(way["highway"](47.649,34.113,47.664,34.132);way["building"](47.649,34.113,47.664,34.132);way["leisure"](47.649,34.113,47.664,34.132);way["natural"="water"](47.649,34.113,47.664,34.132);node["addr:housenumber"](47.649,34.113,47.664,34.132);node["amenity"="school"](47.649,34.113,47.664,34.132);node["highway"="crossing"](47.649,34.113,47.664,34.132););out geom;'
     for url in sources(FOCUS_BBOX,q):
         try:
             print('Neighbourhood map source:',url.split('?')[0],flush=True)
