@@ -25,11 +25,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/game-v2
-          key: game-assets-r170-pokrov-v2
+          key: game-assets-r170-pokrov-focus-v4
       - name: Prepare self-contained site
         run: python3 scripts/prepare.py
       - name: Validate real road graph
         run: node --input-type=module -e "import fs from 'node:fs'; import {parseMap,chooseMission} from './src/core.mjs'; const w=parseMap(JSON.parse(fs.readFileSync('site/map/pokrov.json'))); const m=chooseMission(w,w.spawn,0); if(m.route.length<2)throw Error('No reachable mission'); console.log(w.roads.length,'roads',w.buildings.length,'buildings',w.component.length,'connected nodes');"
+      - name: Validate Centralna 59 to Lyceum 6 pedestrian corridor
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import {parseMap} from './src/core.mjs';
+          import {buildNeighborhoodRoute} from './src/neighborhood.mjs';
+          const data=JSON.parse(fs.readFileSync('site/map/pokrov.json','utf8'));
+          const tour=buildNeighborhoodRoute(parseMap(data),data);
+          if(tour.route.length<3 || tour.startOffset>240 || tour.endOffset>250)throw Error('School walking corridor missing');
+          console.log('Centralna 59 → Lyceum 6',tour.routeType,Math.round(tour.length)+'m','home accuracy:',tour.home.precision);
+          console.log('OSM streets on route:',tour.streets.join(' → '));
+          JS
       - name: Install browser test runner
         run: |
           python3 -m pip install --disable-pip-version-check playwright==1.56.0
