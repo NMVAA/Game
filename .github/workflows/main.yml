@@ -1,12 +1,14 @@
-name: Deploy Game to GitHub Pages
+name: Test and deploy Game
 on:
   push:
+    branches: [main, improvement/navigation-mobile]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: pages
+  group: game-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -49,6 +51,7 @@ jobs:
         with:
           path: site
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-24.04
     permissions:
