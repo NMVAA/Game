@@ -2,6 +2,13 @@
 
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
+## Version 0.4.2 — Safe courtyard start and quick vehicle return
+
+- The walking tour keeps its collision-free start near Centralna 59 even when a car cannot park within normal boarding distance.
+- The mobile walking controls explicitly offer **ШВИДКО В АВТО** (fast return) when the parked car is far away. Keyboard E still requires proximity, avoiding accidental teleportation.
+- Parking selection prefers a clearance-checked mapped-road candidate, and the new browser and unit tests cover both nearby boarding and distant-car recovery.
+- PWA caches and the versioned module URLs are updated so existing installations receive the fix.
+
 ## Version 0.4.1 — Spawn beside Centralna 59
 
 - The first-person character now starts near the mapped/approximate house-number 59 reference, not at an arbitrary route node.

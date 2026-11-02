@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {parseMap,project,distance} from '../src/core.mjs';
+import {parseMap,project,distance,collisionAt} from '../src/core.mjs';
 import {NEIGHBORHOOD,findCentralna59,buildNeighborhoodRoute,routeProgress,startNearHouse59} from '../src/neighborhood.mjs';
 function fixture(){
   const elements=[],n=8,baseLat=47.6530,baseLon=34.1175;
@@ -81,4 +81,23 @@ test('start spot avoids mapped house footprint instead of teleporting inside a b
   assert.ok(spawn.distanceToHome>5,spawn);
   assert.ok(spawn.distanceToHome<=55,spawn);
   assert.ok(!(spawn.walker.x>=block.minX&&spawn.walker.x<=block.maxX&&spawn.walker.z>=block.minZ&&spawn.walker.z<=block.maxZ));
+});
+
+test('courtyard spawn stays near the address with distant but collision-free roadside parking',()=>{
+  const data=fixture(),world=parseMap(data),tour=buildNeighborhoodRoute(world,data),h=tour.home;
+  // Four artificial building blocks enclose a small pedestrian courtyard.
+  // A vehicle cannot fit inside; safe street parking is necessarily farther away.
+  const radius=55;
+  const blocks=[[-radius,-.5,-radius,radius],[4,radius,-radius,radius],[-.5,4,-radius,-4],[-.5,4,4,radius]];
+  for(const [x1,x2,z1,z2] of blocks){
+    const b={minX:h.x+x1,maxX:h.x+x2,minZ:h.z+z1,maxZ:h.z+z2};
+    b.poly=[{x:b.minX,z:b.minZ},{x:b.maxX,z:b.minZ},{x:b.maxX,z:b.maxZ},{x:b.minX,z:b.maxZ}];
+    world.obstacles.insert(b,b.minX,b.minZ,b.maxX,b.maxZ);
+  }
+  const spawn=startNearHouse59(world,tour);
+  assert.equal(spawn.source,'safe-address-vicinity');
+  assert.ok(spawn.distanceToHome<=55,spawn);
+  assert.ok(distance(spawn.walker,spawn.car)>5.4,spawn);
+  assert.equal(collisionAt(world,spawn.walker,.44),null);
+  assert.equal(collisionAt(world,spawn.car,2),null);
 });

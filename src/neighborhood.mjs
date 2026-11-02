@@ -123,6 +123,7 @@ export function startNearHouse59(world,tour){
     .filter(s=>s.road.drive).map(s=>({...s,near:nearestPoint(home,s.a,s.b)}))
     .filter(s=>s.near.distance<85).sort((a,b)=>a.near.distance-b.near.distance).slice(0,100);
   const candidates=[];
+  let nearestRoadsideCar=null;
   for(const seg of roadSegments){
     const length=distance(seg.a,seg.b);
     if(length<.5)continue;
@@ -130,8 +131,10 @@ export function startNearHouse59(world,tour){
     const nx=dz,nz=-dx,heading=Math.atan2(dx,dz);
     for(const along of [0,2.5,-2.5,5,-5,9,-9]){
       const car={x:seg.near.x+dx*along,z:seg.near.z+dz*along,angle:heading};
-      if(!safe(car,1.2)||!safe({x:car.x+dx*1.65,z:car.z+dz*1.65},.9)||
+      if(!safe(car,2)||!safe({x:car.x+dx*1.65,z:car.z+dz*1.65},.9)||
          !safe({x:car.x-dx*1.65,z:car.z-dz*1.65},.9))continue;
+      const carDistance=distance(car,home);
+      if(!nearestRoadsideCar||carDistance<nearestRoadsideCar.distance)nearestRoadsideCar={car,distance:carDistance};
       for(const side of [1,-1])for(const lateral of [3.1,3.8,4.5,5.1]){
         for(const forward of [0,1,-1]){
           const walker={x:car.x+nx*lateral*side+dx*forward,z:car.z+nz*lateral*side+dz*forward};
@@ -161,8 +164,10 @@ export function startNearHouse59(world,tour){
       }
       if(open&&open.distanceToHome<=15)break;
     }
-    if(open && best && distance(open.walker,best.car)<=5.35 && distance(open.walker,best.car)>=2.35 && (!best||open.distanceToHome<best.distanceToHome)){
-      const car=best?.car||{x:tour.start.x,z:tour.start.z,angle:Math.atan2(tour.route[1].x-tour.start.x,tour.route[1].z-tour.start.z)};
+    if(open&&(!best||open.distanceToHome<best.distanceToHome)){
+      // The nearest safe roadside parking may be beyond walking interaction range.
+      // Preserve the safe address spawn; the UI offers an explicit car return.
+      const car=nearestRoadsideCar?.car||best?.car||{x:tour.start.x,z:tour.start.z,angle:Math.atan2(tour.route[1].x-tour.start.x,tour.route[1].z-tour.start.z)};
       best={...open,car,source:'safe-address-vicinity'};
     }
   }

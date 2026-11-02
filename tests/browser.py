@@ -53,10 +53,17 @@ with tempfile.TemporaryDirectory() as folder:
             back_to_start=page.evaluate('window.__GAME_TEST__.walker')
             assert abs(back_to_start['x']-walker_at_start['x'])<.001 and abs(back_to_start['z']-walker_at_start['z'])<.001
             page.screenshot(path=str(OUTPUT/'03-school-route-portrait.png'))
-            # Return to the nearby parked vehicle and test driving controls.
+            # Courtyard starts may be far from legal roadside parking; quick return
+            # must work without letting the proximity-only E key teleport.
             parked=page.evaluate('window.__GAME_TEST__.state')
             separation=((back_to_start['x']-parked['x'])**2+(back_to_start['z']-parked['z'])**2)**0.5
-            assert separation<=5.35, {'walker_to_car':separation,'walker':back_to_start,'car':parked}
+            assert 0<separation<500, {'walker_to_car':separation,'walker':back_to_start,'car':parked}
+            if separation>5.4:
+                page.wait_for_function("document.querySelector('#enter-car').textContent.includes('ШВИДКО В АВТО')",timeout=30000)
+                page.keyboard.press('e')
+                assert page.evaluate('window.__GAME_TEST__.inCar') is False
+            else:
+                page.wait_for_function("document.querySelector('#enter-car').textContent.includes('СІСТИ В АВТО')",timeout=30000)
             page.locator('#enter-car').click()
             assert page.evaluate('window.__GAME_TEST__.inCar') is True
             rect=page.locator('#gas').bounding_box()

@@ -8,6 +8,7 @@ const engine=setupScene(canvas),{renderer,scene,camera}=engine;
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('game-save-v2')||localStorage.getItem('pokrov-save-v1')||'{}');}catch{return {};}})();
 const state=createState(saved),player=makeCar(),beacon=makeBeacon(scene),walker=createWalker();scene.add(player.group);
 let neighborhood=null,neighborhoodView=null,tourActive=true,tourComplete=false;
+const CAR_ENTRY_DISTANCE=5.4;
 let inCar=false;const walkAxis={forward:0,strafe:0};let walkPointer=null,lookPointer=null,lookLastX=0,lookLastY=0;const walkHeld=new Set();
 let world=null,worldView=null,paused=true,started=false,ready=false,camMode=0,night=false,mission=null,remaining=0,arrival=0,route=[],navDist=0;
 let last=performance.now(),accumulator=0,time=0,hudClock=0,saveClock=0,routeClock=0,frames=0,fpsTime=0,fps=60,lowFrames=0,shake=0;
@@ -67,13 +68,18 @@ function exitVehicle(){if(!inCar)return true;if(Math.abs(state.speed)>1.3){notic
   if(!placeWalker(walker,state,world)){notice('Немає безпечного місця, щоб вийти.');return false;}
   inCar=false;clearInput();modeUI();save();notice('Ти вийшов з автомобіля. Оглядай світ свайпом.');return true;
 }
-function enterVehicle(){if(inCar)return true;if(distance(walker,state)>5.4){notice('Підійди до автомобіля, щоб сісти.');return false;}
-  inCar=true;free=true;clearInput();modeUI();audioStart();save();notice('Ти за кермом. Натисни ВИЙТИ, щоб гуляти.');return true;
+function enterVehicle({allowRecall=false}={}){
+  if(inCar)return true;
+  const separation=distance(walker,state),remote=separation>CAR_ENTRY_DISTANCE;
+  if(remote&&!allowRecall){notice('Авто далеко. Скористайся кнопкою ШВИДКО В АВТО.');return false;}
+  inCar=true;free=true;clearInput();modeUI();audioStart();save();
+  notice(remote?`Швидке повернення до припаркованого авто (${Math.round(separation)} м).`:'Ти за кермом. Натисни ВИЙТИ, щоб гуляти.');
+  return true;
 }
 function selectMode(value){if(value==='walk'){if(inCar&&!exitVehicle())$('mode').value=free?'free':'delivery';return;}
-  if(!inCar&&!enterVehicle()){$('mode').value='walk';return;}free=value==='free';if(!free)reroute();modeUI();save();
+  if(!inCar&&!enterVehicle({allowRecall:true})){$('mode').value='walk';return;}free=value==='free';if(!free)reroute();modeUI();save();
 }
-$('enter-car').onclick=()=>enterVehicle();$('exit-car').onclick=()=>exitVehicle();
+$('enter-car').onclick=()=>enterVehicle({allowRecall:true});$('exit-car').onclick=()=>exitVehicle();
 const movement=new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight']);
 addEventListener('keydown',e=>{if(e.target.matches('select,input'))return;if(movement.has(e.code)){if(started&&!paused){e.preventDefault();keys.add(e.code);}}if(e.repeat)return;if(e.code==='Escape'&&started)pause(!paused);if(e.code==='KeyC'&&!paused&&inCar)camMode=(camMode+1)%3;if(e.code==='KeyE'&&started&&!paused){e.preventDefault();inCar?exitVehicle():enterVehicle();}});addEventListener('keyup',e=>keys.delete(e.code));
 addEventListener('blur',()=>{if(started)pause(true);else clearInput();});document.addEventListener('visibilitychange',()=>{if(document.hidden&&started)pause(true);});addEventListener('pagehide',save);
@@ -138,7 +144,7 @@ function updateTourHUD(){
   const d=neighborhood.startSpot?.distanceToHome;
   $('tour-accuracy').textContent=(neighborhood.home.precision==='mapped'?'№59 з OpenStreetMap':'№59 — орієнтовна адреса')+(Number.isFinite(d)?' · старт приблизно за '+Math.round(d)+' м':'')+'; не точний вхід.';
 }
-function updateHud(){if(!inCar){const road=closestRoad(world,walker,60);$('walkstreet').textContent=road?.distance<30?road.road.name:'Вільна прогулянка';$('walkdistance').textContent=Math.round(walker.travel)+' м';$('walkpace').textContent=walker.speed>3.25?'Біг':'Ходьба';$('stamina').value=walker.stamina;const d=Math.round(distance(walker,state));$('enter-car').textContent=d<5.4?'СІСТИ В АВТО':'АВТО · '+d+' м';updateTourHUD();drawMini();return;}const kph=Math.round(Math.abs(state.speed)*3.6);ui.speed.textContent=kph;ui.gear.textContent=state.speed<-.4?'R':kph<2?'N':Math.min(6,1+Math.floor(kph/28));ui.fuel.value=state.fuel;ui.health.value=state.health;ui.funds.textContent=Math.round(state.money).toLocaleString('uk-UA')+' ₴';$('fps').textContent=`${Math.round(fps)} FPS`;
+function updateHud(){if(!inCar){const road=closestRoad(world,walker,60);$('walkstreet').textContent=road?.distance<30?road.road.name:'Вільна прогулянка';$('walkdistance').textContent=Math.round(walker.travel)+' м';$('walkpace').textContent=walker.speed>3.25?'Біг':'Ходьба';$('stamina').value=walker.stamina;const metres=distance(walker,state),d=Math.round(metres);$('enter-car').textContent=metres<=CAR_ENTRY_DISTANCE?'СІСТИ В АВТО':'ШВИДКО В АВТО · '+d+' м';updateTourHUD();drawMini();return;}const kph=Math.round(Math.abs(state.speed)*3.6);ui.speed.textContent=kph;ui.gear.textContent=state.speed<-.4?'R':kph<2?'N':Math.min(6,1+Math.floor(kph/28));ui.fuel.value=state.fuel;ui.health.value=state.health;ui.funds.textContent=Math.round(state.money).toLocaleString('uk-UA')+' ₴';$('fps').textContent=`${Math.round(fps)} FPS`;
   const road=closestRoad(world,state,85);$('street').textContent=road?.distance<30?road.road.name:'Поза дорогою';if(free){$('mission-name').textContent='Вільна поїздка';$('distance').textContent=(state.travel/1000).toFixed(1)+' км';$('countdown').textContent='';$('routehint').textContent='Досліджуй місто';$('arrival').style.width='0%';}else{nav();$('mission-name').textContent=mission.target.name;$('distance').textContent=navDist>999?(navDist/1000).toFixed(1)+' км':Math.round(navDist)+' м';$('countdown').textContent=remaining>0?`${Math.floor(remaining/60)}:${String(Math.floor(remaining%60)).padStart(2,'0')}`:'БЕЗ БОНУСУ';$('arrival').style.width=`${Math.min(100,arrival*100)}%`;}drawMini();}
 function fixedStep(dt){if(!inCar){const forward=(keys.has('KeyW')||keys.has('ArrowUp')?1:0)-(keys.has('KeyS')||keys.has('ArrowDown')?1:0),strafe=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);const old={x:walker.x,z:walker.z};stepWalker(walker,{forward:clamp(forward+walkAxis.forward,-1,1),strafe:clamp(strafe+walkAxis.strafe,-1,1),sprint:walkHeld.has('sprint')||keys.has('ShiftLeft')||keys.has('ShiftRight'),jump:walkHeld.has('jump')||keys.has('Space')},dt,world,state);
   if(neighborhood&&tourActive&&!tourComplete&&distance(walker,neighborhood.end)<11){
