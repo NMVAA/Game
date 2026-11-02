@@ -1,5 +1,5 @@
 /** Deterministic game logic; no browser or Three.js dependency. Metres and seconds. */
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 export const ORIGIN = [47.653, 34.094];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const finite = (v, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
