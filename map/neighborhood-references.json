@@ -1,0 +1,71 @@
+{
+  "title": "Game neighbourhood reference audit",
+  "generated": "2026-11-02",
+  "area": "Pokrov, Dnipropetrovsk oblast, Ukraine",
+  "purpose": "Cross-check Game landmark locations against independent cartography; these are NOT source polygons/tiles and are not exact pedestrian entrances.",
+  "start": {
+    "label": "вул. Центральна, 59",
+    "status": "address_exists_coordinate_approximate",
+    "proposed": {
+      "lat": 47.65358,
+      "lon": 34.1252
+    },
+    "precision_note": "No independently verified exact building center or entrance. This game reference is placed near independently mapped building 61; snap walking route to authentic OSM roads. Never present as surveyed position.",
+    "sources": [
+      {
+        "provider": "Visicom maps",
+        "entity": "вул. Центральна (Калініна), 61",
+        "lat": 47.653543825541526,
+        "lon": 34.1261783801615,
+        "url": "https://maps.visicom.ua/i/ADR3JRG6RV9EYDM1Y4",
+        "role": "adjacent_address_control_point"
+      },
+      {
+        "provider": "Vikonda",
+        "entity": "Showroom in Pokrov, Centralna 59",
+        "url": "https://vikonda.ua/office/dnipropetrovska-oblast/pokrov/",
+        "role": "address_exists"
+      },
+      {
+        "provider": "Pokrov city council",
+        "entity": "Municipal notice about Centralna 59",
+        "url": "https://www.pkrv.dp.gov.ua/news/shanovni-meshkanci-mista-pokrov-3904",
+        "role": "address_exists"
+      },
+      {
+        "provider": "Postal directory",
+        "entity": "Centralna 59, postal code 53303",
+        "url": "https://imisto.net/uk/postcodes/3-dnipropetrovska/65-nikopolskiy/28826-pokrov/486646-centralna",
+        "role": "address_exists"
+      }
+    ]
+  },
+  "destination": {
+    "label": "КЗ Ліцей №6, вул. Чіатурська, 6",
+    "point": {
+      "lat": 47.65794101800691,
+      "lon": 34.11834237593813
+    },
+    "status": "cross_verified_poi_location",
+    "precision_note": "Coordinates are third-party POI coordinates, not a confirmed gate or main entrance.",
+    "sources": [
+      {
+        "provider": "Visicom maps",
+        "url": "https://maps.visicom.ua/c/34.1169%2C47.65788%2C17/f/POI10JMRHE4?lang=uk",
+        "role": "point_location"
+      },
+      {
+        "provider": "Pokrov city council",
+        "url": "https://pokrov-mr.gov.ua/news/do-uvagu-meshkanciv-gromadu-ta-vnutrishnoperemischenuh-osib-13503",
+        "role": "official_school_address"
+      },
+      {
+        "provider": "Education portal",
+        "url": "https://school.isuo.org/school/view?id=487",
+        "role": "school_registry"
+      }
+    ]
+  },
+  "geometry_source": "OpenStreetMap (ODbL 1.0), https://www.openstreetmap.org/copyright",
+  "note": "Google/Visicom/other proprietary tiles and imagery are used for location reference only, not copied into the game. Footpath usability, gates and access restrictions require further checks."
+}
