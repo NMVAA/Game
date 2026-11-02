@@ -4,7 +4,7 @@
  * approximate street-side reference derived from neighbouring mapped addresses,
  * NEVER a claim of an exact house coordinate or entrance.
  */
-import {project,distance,nearestPoint,findRoute,nearestNode,clamp} from './core.mjs';
+import {project,distance,nearestPoint,findRoute,nearestNode,clamp,collisionAt} from './core.mjs';
 
 export const NEIGHBORHOOD={
   id:'centralna59-lyceum6',
@@ -110,6 +110,70 @@ export function buildNeighborhoodRoute(world,data){
   const streets=[...new Set(route.map(p=>p.name).filter(s=>s&&!/без назви/i.test(s)))];
   return {id:NEIGHBORHOOD.id,home,school,route,length,routeType,start:route[0],end:route.at(-1),startOffset:snaps.da,endOffset:snaps.db,streets};
 }
+/** Pick a spawn beside house 59, never simply at the first routing node.
+ * Validates building/tree collision, street position and parked-car clearance.
+ * OSM can lack house entrances: the address anchor remains approximate.
+ */
+export function startNearHouse59(world,tour){
+  if(!world||!tour?.home)throw new Error('Потрібна карта та адресний орієнтир Центральна, 59.');
+  const home=tour.home,bounds=world.bounds,insideBounds=p=>!bounds||
+    p.x>bounds.minX+.7&&p.x<bounds.maxX-.7&&p.z>bounds.minZ+.7&&p.z<bounds.maxZ-.7;
+  const safe=(p,r)=>insideBounds(p)&&!collisionAt(world,p,r);
+  const roadSegments=world.roadGrid.near(home.x,home.z,90)
+    .filter(s=>s.road.drive).map(s=>({...s,near:nearestPoint(home,s.a,s.b)}))
+    .filter(s=>s.near.distance<85).sort((a,b)=>a.near.distance-b.near.distance).slice(0,100);
+  const candidates=[];
+  for(const seg of roadSegments){
+    const length=distance(seg.a,seg.b);
+    if(length<.5)continue;
+    const dx=(seg.b.x-seg.a.x)/length,dz=(seg.b.z-seg.a.z)/length;
+    const nx=dz,nz=-dx,heading=Math.atan2(dx,dz);
+    for(const along of [0,2.5,-2.5,5,-5,9,-9]){
+      const car={x:seg.near.x+dx*along,z:seg.near.z+dz*along,angle:heading};
+      if(!safe(car,1.2)||!safe({x:car.x+dx*1.65,z:car.z+dz*1.65},.9)||
+         !safe({x:car.x-dx*1.65,z:car.z-dz*1.65},.9))continue;
+      for(const side of [1,-1])for(const lateral of [3.1,3.8,4.5,5.1]){
+        for(const forward of [0,1,-1]){
+          const walker={x:car.x+nx*lateral*side+dx*forward,z:car.z+nz*lateral*side+dz*forward};
+          if(!safe(walker,.44))continue;
+          const fromCar=distance(walker,car);
+          if(fromCar<2.35||fromCar>5.35)continue;
+          const homeDistance=distance(walker,home);
+          candidates.push({walker,car,distanceToHome:homeDistance,score:homeDistance+seg.near.distance*.04+Math.abs(fromCar-3.65)*.2,source:'mapped-road'});
+        }
+      }
+    }
+    // Avoid enumerating the whole city: only nearby mapped streets are relevant.
+    if(candidates.length>1200)break;
+  }
+  candidates.sort((a,b)=>a.score-b.score);
+  let best=candidates[0];
+  if(!best||best.distanceToHome>45){
+    // A courtyard without a mapped driveway can still contain a safe public
+    // starting location; never invent a traversable path through buildings.
+    let open=null;
+    for(const radius of [2,4,6,8,11,15,20,27,35,45]){
+      for(let i=0;i<24;i++){
+        const a=i*Math.PI/12,p={x:home.x+Math.cos(a)*radius,z:home.z+Math.sin(a)*radius};
+        if(!safe(p,.45))continue;
+        const score=radius+Math.max(0,(roadSegments[0]?.near.distance||0)-25)*.04;
+        if(!open||score<open.score)open={walker:p,score,distanceToHome:radius};
+      }
+      if(open&&open.distanceToHome<=15)break;
+    }
+    if(open&&(!best||open.distanceToHome<best.distanceToHome)){
+      const car=best?.car||{x:tour.start.x,z:tour.start.z,angle:Math.atan2(tour.route[1].x-tour.start.x,tour.route[1].z-tour.start.z)};
+      best={...open,car,source:'safe-address-vicinity'};
+    }
+  }
+  if(!best||best.distanceToHome>55)
+    throw new Error('Не знайдено безпечного старту біля Центральної, 59 у межах 55 метрів.');
+  const aim=distance(best.walker,tour.start)>3?tour.start:tour.route[1];
+  best.walker.yaw=Math.atan2(aim.x-best.walker.x,aim.z-best.walker.z);
+  best.nearHouse=best.distanceToHome<=55;
+  return best;
+}
+
 export function routeProgress(route,position,heading=0){
   if(!route?.length)return {remaining:0,progress:0,hint:'Маршрут не завантажено',offRoute:true};
   let closest={distance:Infinity,index:1,t:0};
