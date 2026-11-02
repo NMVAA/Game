@@ -5,45 +5,55 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-      - name: Fetch Pokrov OpenStreetMap geometry
-        shell: bash
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Logic tests
+        run: node --test tests/core.test.mjs
+      - name: Cache engine and OSM snapshot
+        uses: actions/cache@v4
+        with:
+          path: .cache/game-v2
+          key: game-assets-r170-pokrov-v2
+      - name: Prepare self-contained site
+        run: python3 scripts/prepare.py
+      - name: Validate real road graph
+        run: node --input-type=module -e "import fs from 'node:fs'; import {parseMap,chooseMission} from './src/core.mjs'; const w=parseMap(JSON.parse(fs.readFileSync('site/map/pokrov.json'))); const m=chooseMission(w,w.spawn,0); if(m.route.length<2)throw Error('No reachable mission'); console.log(w.roads.length,'roads',w.buildings.length,'buildings',w.component.length,'connected nodes');"
+      - name: Install browser test runner
         run: |
-          mkdir -p map
-          QUERY='[out:json][timeout:90];(way["highway"](47.638,34.075,47.669,34.118);way["building"](47.638,34.075,47.669,34.118););out geom;'
-          for ENDPOINT in 'https://overpass.kumi.systems/api/interpreter' 'https://overpass-api.de/api/interpreter' 'https://overpass.nchc.org.tw/api/interpreter'; do
-            echo "Trying $ENDPOINT"
-            if curl --fail --silent --show-error --location --retry 2 --retry-delay 4 --max-time 120 --data-urlencode "data=$QUERY" "$ENDPOINT" -o map/pokrov.tmp; then
-              if python3 -c 'import json; x=json.load(open("map/pokrov.tmp")); assert len(x.get("elements",[])) > 20'; then
-                mv map/pokrov.tmp map/pokrov.json
-                echo "OSM geometry downloaded"
-                break
-              fi
-            fi
-          done
-          rm -f map/pokrov.tmp
-          if [ ! -s map/pokrov.json ]; then
-            echo "::warning::Overpass servers unavailable; live map loading will be attempted in the browser."
-          fi
-      - name: Upload site
+          python3 -m pip install --disable-pip-version-check playwright==1.56.0
+          python3 -m playwright install --with-deps chromium
+      - name: Mobile and offline browser tests
+        run: python3 tests/browser.py
+      - name: Save test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-test-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Upload verified site
         uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: site
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

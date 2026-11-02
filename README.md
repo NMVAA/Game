@@ -1,19 +1,44 @@
 # Game
 
-Мобільна браузерна 3D-гра на Three.js, присвячена місту Покров Дніпропетровської області.
+A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
-## Запуск
+## Version 0.2.0
 
-Публікація налаштована через GitHub Pages за адресою https://nmvaa.github.io/Game/. Відкрийте адресу на телефоні. У браузері можна встановити гру як PWA, якщо браузер підтримує встановлення.
+This release replaces the original random-grid demo. It is a substantial prototype upgrade, **not an AAA release or a photorealistic reconstruction**.
 
-## Карта
+- Real OSM roads and footprints loaded from a static snapshot hosted with the game. No silent fictional-map fallback. Missing geometry fails the deployment instead of publishing a broken city.
+- Batched building geometry, facade windows, asphalt, sidewalks, markings, instanced trees, streetlights, shadows, day/night lighting, a detailed procedural car and three cameras.
+- Fixed-step arcade driving, analog touch steering, braking/reverse, handbrake, grip, off-road drag, swept building/tree collisions, damage, ambient traffic, tire marks and dust.
+- Deliveries on the largest connected drivable road graph, route guidance, stop-to-complete checkpoints, rewards, fuel, repairs and engine/tire upgrades. Free-drive mode is available in Pause.
+- Synthesized engine audio, quality presets and automatic resolution reduction. Performance on the user's actual phone remains to be measured; the software-rendered CI browser is not a phone benchmark.
+- Versioned PWA cache, PNG install icons, locally bundled Three.js and map, offline re-entry after the first complete installation. Existing money/mission/fuel data migrates from `pokrov-save-v1`.
 
-Гра завантажує дороги та контури будівель із OpenStreetMap через Overpass API й кешує відповідь у localStorage. Якщо Overpass недоступний, використовується **вигадана резервна сітка**, яка не є картою Покрова. Дані © учасники OpenStreetMap, ліцензія ODbL.
+## Controls
 
-## Керування
+Touch: left thumb pad steers; right pedals accelerate and brake/reverse; Handbrake enables sliding. Camera switches chase/hood/overhead views. Pause opens graphics, audio, day/night, free-drive, garage and recovery controls.
 
-◀ ▶ — поворот; ▲ — газ; ▼ — гальмо / задній хід. Камера — перемикання ракурсу. ↺ — повернення на старт.
+Keyboard: WASD/arrows, Space for handbrake, C for camera, Esc for pause. Losing focus clears all held controls and pauses the simulation.
 
-## Обмеження
+## Source layout
 
-Поточна версія — прототип, не точна реконструкція будівель чи рельєфу. Для першого запуску потрібен інтернет: Three.js завантажується з esm.sh. Для надійного офлайн-режиму бібліотеку слід розмістити локально. PWA не опубліковано автоматично — потрібен HTTPS-хостинг.
+`src/core.mjs` contains deterministic geometry, routing and vehicle logic with no rendering dependencies. `src/world.mjs` builds the Three.js scene and vehicles. `src/game.mjs` owns input, simulation, missions, audio, navigation and UI. `src/ui.css` contains responsive portrait/landscape layouts.
+
+`scripts/prepare.py` creates `site/`, bundles the pinned Three.js 0.170.0 module, validates and packages an OSM snapshot, and generates PWA PNG icons. Snapshot data is reused from the build cache or the published site before requesting an OSM API. Network requests do not run on the player's phone. Bump the asset cache key to refresh the snapshot. A build requires at least 20 roads and 10 buildings; the real connected graph is also validated.
+
+## Tests and deployment
+
+```
+node --test tests/core.test.mjs
+python3 scripts/prepare.py
+python3 -m pip install playwright==1.56.0
+python3 -m playwright install --with-deps chromium
+python3 tests/browser.py
+```
+
+The GitHub Pages workflow runs logic tests, prepares assets, validates the real graph, then runs Chromium checks at the `/Game/` subpath: startup, held pedal input, pause/resume, quality and night toggles, portrait/landscape layouts, free-drive and offline reload. Screenshots and a JSON report are uploaded as `game-test-results`. Only a passing build is deployed. These checks do not establish AAA quality or real-device performance.
+
+## Geographic fidelity and limitations
+
+Roads and building outlines are real OSM geometry, within the available snapshot's coverage. Ground is flat. Building heights use OSM tags where available and estimates otherwise. Facades, car models, vegetation and street furniture are procedural and may not match the real city. Multipolygon reconstruction, realistic terrain, one-way-aware traffic and advanced wheel suspension are not implemented. The collision model is an arcade approximation, not a full rigid-body simulation. Persistent saves use browser storage and can be removed by the browser/user.
+
+Attribution is visible in the game. OSM source data is distributed under ODbL as `map/pokrov.json`; see `THIRD_PARTY.txt` for dependency and data licensing.
