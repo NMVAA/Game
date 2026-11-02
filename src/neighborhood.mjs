@@ -1,0 +1,130 @@
+/**
+ * Centralna 59 -> Lyceum 6 neighbourhood walking route in Pokrov.
+ * Road/footway geometry comes from OSM. The house 59 fallback is an
+ * approximate street-side reference derived from neighbouring mapped addresses,
+ * NEVER a claim of an exact house coordinate or entrance.
+ */
+import {project,distance,nearestPoint,findRoute,nearestNode,clamp} from './core.mjs';
+
+export const NEIGHBORHOOD={
+  id:'centralna59-lyceum6',
+  home:{lat:47.65358,lon:34.12520,label:'Центральна, 59',precision:'approximate'},
+  school:{lat:47.65794101800691,lon:34.11834237593813,label:'Ліцей №6',address:'Чіатурська, 6',precision:'verified'}
+};
+const WALKABLE=new Set(['residential','living_street','service','unclassified','tertiary','secondary','primary','footway','path','pedestrian','steps','crossing','cycleway','track','sidewalk']);
+const norm=v=>String(v||'').toLocaleLowerCase('uk-UA').replace(/[^а-яіїєґa-z0-9]/gu,'');
+const isCentralna=name=>/централ|калінін|central|tsentral|kalinin/.test(norm(name));
+const center=points=>({x:points.reduce((s,p)=>s+p.x,0)/points.length,z:points.reduce((s,p)=>s+p.z,0)/points.length});
+export function findCentralna59(data){
+  const fallback={...project(NEIGHBORHOOD.home.lon,NEIGHBORHOOD.home.lat),label:NEIGHBORHOOD.home.label,precision:'approximate',source:'Neighbouring address reference'};
+  const candidates=[];
+  for(const e of data.elements||[]){
+    const t=e.tags||{},n=String(t['addr:housenumber']||'').trim();
+    if(!/^59(?:\s|$)/.test(n))continue;
+    if(t['addr:street']&&!isCentralna(t['addr:street']))continue;
+    const points=e.geometry?.length?e.geometry.map(p=>project(p.lon,p.lat)):Number.isFinite(e.lat)&&Number.isFinite(e.lon)?[project(e.lon,e.lat)]:[];
+    if(!points.length)continue;
+    const loc=center(points),d=distance(loc,fallback);
+    // A housenumber without addr:street is accepted only very close to the known corridor.
+    if(d<(t['addr:street']?480:95))candidates.push({x:loc.x,z:loc.z,precision:'mapped',source:'OpenStreetMap',label:NEIGHBORHOOD.home.label,d});
+  }
+  candidates.sort((a,b)=>a.d-b.d);
+  return candidates[0]||fallback;
+}
+function heapPush(heap,item){heap.push(item);let i=heap.length-1;while(i){let p=(i-1)>>1;if(heap[p].f<=item.f)break;heap[i]=heap[p];i=p;}heap[i]=item;}
+function heapPop(heap){const result=heap[0],last=heap.pop();if(!heap.length)return result;let i=0;while(i*2+1<heap.length){let c=i*2+1;if(c+1<heap.length&&heap[c+1].f<heap[c].f)c++;if(last.f<=heap[c].f)break;heap[i]=heap[c];i=c;}heap[i]=last;return result;}
+function walkingNetwork(data){
+  const nodes=new Map(),edges=new Map();
+  const connect=(a,b,kind,name)=>{
+    const p=nodes.get(a),q=nodes.get(b);if(!p||!q)return;
+    const metres=distance(p,q);if(metres<.05)return;
+    for(const [u,v] of [[a,b],[b,a]]){
+      if(!edges.has(u))edges.set(u,[]);
+      edges.get(u).push({id:v,cost:metres*(kind==='primary'||kind==='secondary'?1.3:1),name});
+    }
+  };
+  for(const e of data.elements||[]){
+    const t=e.tags||{};
+    if(e.type!=='way'||!WALKABLE.has(t.highway)||t.access==='private'||t.access==='no'||t.foot==='no'||t.area==='yes')continue;
+    const coords=e.geometry;
+    if(!coords?.length||coords.length<2)continue;
+    const ids=coords.map((p,i)=>e.nodes?.[i]!=null?String(e.nodes[i]):`geo:${p.lon.toFixed(6)},${p.lat.toFixed(6)}`);
+    coords.forEach((geo,i)=>{const p=project(geo.lon,geo.lat);if(!nodes.has(ids[i]))nodes.set(ids[i],{...p,id:ids[i],name:t['name:uk']||t.name||''});});
+    for(let i=1;i<ids.length;i++)connect(ids[i-1],ids[i],t.highway,t['name:uk']||t.name||'');
+  }
+  return {nodes,edges};
+}
+function components(net){
+  const seen=new Set(),out=[];
+  for(const id of net.nodes.keys()){
+    if(seen.has(id)||!net.edges.has(id))continue;
+    const stack=[id],ids=[];seen.add(id);
+    while(stack.length){const v=stack.pop();ids.push(v);for(const item of net.edges.get(v)||[])if(!seen.has(item.id)){seen.add(item.id);stack.push(item.id);}}
+    if(ids.length>=3)out.push(ids);
+  }
+  return out;
+}
+function endpoints(component,net,home,school){
+  let start=null,end=null,da=Infinity,db=Infinity;
+  for(const id of component){
+    const p=net.nodes.get(id),a=distance(p,home),b=distance(p,school);
+    if(a<da){da=a;start=id;}if(b<db){db=b;end=id;}
+  }
+  return {start,end,da,db,score:da+db};
+}
+function aStar(net,from,to){
+  const end=net.nodes.get(to),cost=new Map([[from,0]]),prev=new Map(),open=[],closed=new Set();
+  heapPush(open,{id:from,f:distance(net.nodes.get(from),end)});
+  while(open.length){
+    const {id}=heapPop(open);if(closed.has(id))continue;
+    if(id===to){const ids=[id];while(prev.has(ids.at(-1)))ids.push(prev.get(ids.at(-1)));return ids.reverse().map(k=>net.nodes.get(k));}
+    closed.add(id);
+    for(const item of net.edges.get(id)||[]){
+      const candidate=cost.get(id)+item.cost;
+      if(candidate<(cost.get(item.id)??Infinity)){
+        prev.set(item.id,id);cost.set(item.id,candidate);
+        heapPush(open,{id:item.id,f:candidate+distance(net.nodes.get(item.id),end)});
+      }
+    }
+  }
+  return [];
+}
+export function buildNeighborhoodRoute(world,data){
+  const home=findCentralna59(data),school={...project(NEIGHBORHOOD.school.lon,NEIGHBORHOOD.school.lat),label:NEIGHBORHOOD.school.label,precision:'verified'};
+  const net=walkingNetwork(data),possible=components(net).map(ids=>({ids,...endpoints(ids,net,home,school)})).filter(x=>x.start&&x.end);
+  possible.sort((a,b)=>a.score-b.score);
+  let route=[],routeType='footways',snaps=null;
+  for(const choice of possible.slice(0,10)){
+    if(choice.da>240||choice.db>250||choice.start===choice.end)continue;
+    const candidate=aStar(net,choice.start,choice.end);
+    if(candidate.length>=2){route=candidate;snaps=choice;break;}
+  }
+  if(route.length<2){
+    const a=nearestNode(world,home),b=nearestNode(world,school);
+    route=findRoute(world,a,b);routeType='mapped-roads';
+    snaps={da:route.length?distance(home,route[0]):Infinity,db:route.length?distance(school,route.at(-1)):Infinity};
+  }
+  if(route.length<2||snaps.da>300||snaps.db>300)throw new Error('Немає зв’язного пішохідного маршруту між Центральною, 59 та ліцеєм №6 в OSM.');
+  const length=route.reduce((s,p,i)=>s+(i?distance(route[i-1],p):0),0);
+  const streets=[...new Set(route.map(p=>p.name).filter(s=>s&&!/без назви/i.test(s)))];
+  return {id:NEIGHBORHOOD.id,home,school,route,length,routeType,start:route[0],end:route.at(-1),startOffset:snaps.da,endOffset:snaps.db,streets};
+}
+export function routeProgress(route,position,heading=0){
+  if(!route?.length)return {remaining:0,progress:0,hint:'Маршрут не завантажено',offRoute:true};
+  let closest={distance:Infinity,index:1,t:0};
+  for(let i=1;i<route.length;i++){
+    const p=nearestPoint(position,route[i-1],route[i]);
+    if(p.distance<closest.distance)closest={distance:p.distance,index:i,t:p.t};
+  }
+  let remaining=0,total=0;
+  for(let i=1;i<route.length;i++){
+    const d=distance(route[i-1],route[i]);total+=d;
+    if(i===closest.index)remaining+=d*(1-closest.t);
+    else if(i>closest.index)remaining+=d;
+  }
+  const aim=route[Math.min(route.length-1,closest.index+1)]||route.at(-1);
+  const angle=Math.atan2(aim.x-position.x,aim.z-position.z)-heading;
+  const relative=Math.atan2(Math.sin(angle),Math.cos(angle));
+  const hint=closest.distance>35?'Повернись до маршруту':Math.abs(relative)>2.3?'Розвернися':relative>.50?'Поверни ліворуч':relative<-.50?'Поверни праворуч':'Продовжуй прямо';
+  return {remaining,progress:clamp(total?(total-remaining)/total:1,0,1),offRoute:closest.distance>35,nearestDistance:closest.distance,hint};
+}
