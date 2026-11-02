@@ -21,12 +21,13 @@ export function findCentralna59(data){
   for(const e of data.elements||[]){
     const t=e.tags||{},n=String(t['addr:housenumber']||'').trim();
     if(!/^59(?:\s|$)/.test(n))continue;
-    if(t['addr:street']&&!isCentralna(t['addr:street']))continue;
+    // A building #59 with no named street could belong to another road.
+    // Require an explicit, matching street name before calling its position mapped.
+    if(!t['addr:street']||!isCentralna(t['addr:street']))continue;
     const points=e.geometry?.length?e.geometry.map(p=>project(p.lon,p.lat)):Number.isFinite(e.lat)&&Number.isFinite(e.lon)?[project(e.lon,e.lat)]:[];
     if(!points.length)continue;
     const loc=center(points),d=distance(loc,fallback);
-    // A housenumber without addr:street is accepted only very close to the known corridor.
-    if(d<(t['addr:street']?480:95))candidates.push({x:loc.x,z:loc.z,precision:'mapped',source:'OpenStreetMap',label:NEIGHBORHOOD.home.label,d});
+    if(d<480)candidates.push({x:loc.x,z:loc.z,precision:'mapped',source:'OpenStreetMap',label:NEIGHBORHOOD.home.label,d});
   }
   candidates.sort((a,b)=>a.d-b.d);
   return candidates[0]||fallback;
