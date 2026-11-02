@@ -11,12 +11,12 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/ui.css?v=0.4.0">
+  <link rel="stylesheet" href="./src/ui.css?v=0.4.1">
 </head>
 <body>
   <canvas id="scene" aria-label="Тривимірний світ гри"></canvas>
   <div id="vignette" aria-hidden="true"></div>
-  <header id="header"><div class="wordmark">GAME <span>0.4</span></div><div id="mapstate">Завантаження міста</div><button id="pause" aria-label="Меню та пауза">Ⅱ</button></header>
+  <header id="header"><div class="wordmark">GAME <span>0.4.1</span></div><div id="mapstate">Завантаження міста</div><button id="pause" aria-label="Меню та пауза">Ⅱ</button></header>
   <main id="hud" hidden>
     <section id="contract"><div class="eyebrow">МІСЬКИЙ КУР’ЄР <span id="countdown">—</span></div><div id="mission-name">Перша доставка</div><div class="route-line"><span id="distance">— м</span><span id="routehint">Рухайся до позначки</span></div><div class="contract-progress"><i id="arrival"></i></div></section>
     <section id="navigation"><canvas id="minimap" width="320" height="320" aria-label="Мінікарта маршруту"></canvas><div id="street">Покров</div></section>
@@ -47,7 +47,7 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="boot" class="overlay"><section class="panel hero">
     <div class="eyebrow">ПІШОХІДНИЙ СИМУЛЯТОР / THREE.JS</div><h1>GAME<span>ДОСЛІДЖУЙ МІСТО.</span></h1>
-    <p class="lead">Центральна, 59 → ліцей №6.<br>Прогулянка реальними вулицями Покрова та навколишнім районом.</p>
+    <p class="lead">Починай прогулянку біля Центральної, 59.<br>Дійди до ліцею №6 вулицями Покрова.</p>
     <div class="featureline"><span>МАРШРУТ ДО ШКОЛИ</span><span>ОГЛЯД СВАЙПОМ</span><span>ДЕНЬ / НІЧ</span></div>
     <div class="loading"><i id="loadbar"></i></div><p id="loadstatus" role="status">Запуск графічного рушія…</p>
     <button id="start" class="primary" disabled>ЗАВАНТАЖЕННЯ…</button><button id="retry" hidden>Повторити завантаження</button>
@@ -65,7 +65,7 @@
   <footer><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></footer>
   <script type="module">
     // Dynamic import exposes boot errors instead of leaving an unresponsive Start button.
-    import('./src/game.mjs?v=0.4.0').catch(error=>{console.error(error);document.getElementById('loadstatus').textContent='Не вдалося запустити Game: '+error.message;document.getElementById('retry').hidden=false;document.getElementById('retry').onclick=()=>location.reload();});
+    import('./src/game.mjs?v=0.4.1').catch(error=>{console.error(error);document.getElementById('loadstatus').textContent='Не вдалося запустити Game: '+error.message;document.getElementById('retry').hidden=false;document.getElementById('retry').onclick=()=>location.reload();});
   </script>
 </body>
 </html>
