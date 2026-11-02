@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseMap,project,findRoute,chooseMission,nearestNode,createState,spawnAt,stepVehicle,collisionAt,SpatialGrid,inside,nearestPoint,seeded} from '../src/core.mjs';
+import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker} from '../src/walking.mjs';
 function fixture(){const elements=[],n=7;for(let j=0;j<n;j++)for(let i=0;i<n;i++)elements.push({type:'node',id:1+j*n+i,lon:34.09+i*.0017,lat:47.648+j*.0013});for(let i=0;i<n;i++){elements.push({type:'way',id:100+i,nodes:Array.from({length:n},(_,j)=>1+j*n+i),tags:{highway:'residential',name:'Тестова вертикаль'}});elements.push({type:'way',id:200+i,nodes:Array.from({length:n},(_,j)=>1+i*n+j),tags:{highway:'residential',name:'Тестова горизонталь'}});}return{elements};}
 function flat(){const obstacles=new SpatialGrid(),roadGrid=new SpatialGrid();roadGrid.insert({a:{x:0,z:-5000},b:{x:0,z:5000},road:{width:100,drive:true}},-50,-5000,50,5000);return{obstacles,roadGrid,bounds:{minX:-5000,minZ:-5000,maxX:5000,maxZ:5000}};}
 function wall(world){const poly=[{x:-10,z:20},{x:10,z:20},{x:10,z:25},{x:-10,z:25}],obj={poly,minX:-10,maxX:10,minZ:20,maxZ:25};world.obstacles.insert(obj,-10,20,10,25);return obj;}
@@ -19,3 +20,32 @@ test('empty fuel or broken car cannot accelerate',()=>{for(const key of ['fuel',
 test('save migration sanitizes numbers and preserves progress',()=>{const s=createState({fuel:42,money:600,goal:3,health:999,engine:90,tires:-4,travel:'bad'});assert.equal(s.fuel,42);assert.equal(s.money,600);assert.equal(s.goal,3);assert.equal(s.health,100);assert.equal(s.engine,3);assert.equal(s.tires,0);assert.equal(s.travel,0);});
 test('rescue reset preserves fuel, damage and money',()=>{const s=createState({fuel:41,health:62,money:500});spawnAt(s,{x:10,z:20,angle:1});assert.equal(s.x,10);assert.equal(s.fuel,41);assert.equal(s.health,62);assert.equal(s.money,500);});
 test('seeded procedural output is reproducible',()=>{const a=seeded(3),b=seeded(3);for(let i=0;i<30;i++)assert.equal(a(),b());});
+
+test('first-person look rotates freely but vertical pitch is constrained',()=>{
+  const w=createWalker();lookAround(w,100,-100);assert.ok(w.yaw>.25&&w.pitch>.25);
+  lookAround(w,0,90000);assert.ok(w.pitch>=-1.28&&w.pitch<=1.28);
+  lookAround(w,0,-90000);assert.ok(w.pitch<=1.28);
+  assert.equal(EYE_HEIGHT,1.68);
+});
+test('pedestrian movement uses camera forward/strafe and accumulates travel',()=>{
+  const w=createWalker(),world=flat();for(let i=0;i<60;i++)stepWalker(w,{forward:1},1/60,world);
+  assert.ok(w.z>1&&w.z<4);assert.ok(Math.abs(w.x)<.01);assert.ok(w.travel>1);
+  lookAround(w,Math.PI/.0034/2,0);for(let i=0;i<60;i++)stepWalker(w,{forward:1},1/60,world);
+  assert.ok(w.x>1);
+});
+test('pedestrian collision slides along buildings without clipping through',()=>{
+  const world=flat();wall(world);const w=createWalker();
+  for(let i=0;i<900;i++)stepWalker(w,{forward:1},1/60,world);
+  assert.ok(w.z<19.7,w.z);assert.ok(w.z>17);
+  for(let i=0;i<180;i++)stepWalker(w,{strafe:1},1/60,world);
+  assert.ok(w.x>4);
+});
+test('sprint, stamina, jump and parked vehicle collision',()=>{
+  const world=flat(),w=createWalker();
+  for(let i=0;i<120;i++)stepWalker(w,{forward:1,sprint:true},1/60,world);
+  assert.ok(w.z>5);assert.ok(w.stamina<80);assert.ok(w.speed>4);
+  stepWalker(w,{jump:true},1/60,world);assert.ok(w.vertical>0);
+  for(let i=0;i<120;i++)stepWalker(w,{},1/60,world);assert.equal(w.vertical,0);assert.ok(w.stamina>60);
+  const car={x:w.x+5,z:w.z,angle:0},near=createWalker();assert.ok(placeWalker(near,car,world));
+  const blocked=createWalker({x:0,z:0});for(let i=0;i<500;i++)stepWalker(blocked,{forward:1},1/60,world,{x:0,z:5});assert.ok(blocked.z<3.1);
+});
