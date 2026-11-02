@@ -16,12 +16,16 @@ with tempfile.TemporaryDirectory() as folder:
             page.wait_for_function('window.__GAME_TEST__?.ready === true',timeout=90000)
             assert page.title()=='Game'
             data=page.evaluate('window.__GAME_TEST__.map');assert data['roads']>20 and data['buildings']>10,data
+            tour=page.evaluate('window.__GAME_TEST__.tour')
+            assert tour and tour['points']>=3 and tour['startOffset']<=240 and tour['endOffset']<=250,tour
             page.screenshot(path=str(OUTPUT/'01-menu-portrait.png'))
             page.locator('#start').click();page.wait_for_timeout(700)
             assert page.evaluate('window.__GAME_TEST__.paused') is False
             # First-person walking is the default mobile game mode.
             assert page.evaluate('window.__GAME_TEST__.inCar') is False
             assert page.locator('#walkcontrols').is_visible()
+            assert page.locator('#tourcard').is_visible()
+            assert 'Ліцей №6' in page.locator('#tour-name').inner_text()
             stick=page.locator('#walkpad').bounding_box()
             page.mouse.move(stick['x']+stick['width']*.5,stick['y']+stick['height']*.18)
             page.mouse.down()
@@ -36,6 +40,11 @@ with tempfile.TemporaryDirectory() as folder:
             x=surface['x']+surface['width']*.7;y=surface['y']+surface['height']*.55
             page.mouse.move(x,y);page.mouse.down();page.mouse.move(x+52,y+17,steps=5);page.mouse.up()
             assert abs(page.evaluate('window.__GAME_TEST__.walker.yaw')-yaw)>.05
+            page.locator('#tour-free').click()
+            assert 'ПОКАЗАТИ' in page.locator('#tour-free').inner_text()
+            page.locator('#tour-restart').click()
+            assert 'ВІЛЬНИЙ' in page.locator('#tour-free').inner_text()
+            page.screenshot(path=str(OUTPUT/'03-school-route-portrait.png'))
             # Return to the nearby parked vehicle and test driving controls.
             page.locator('#enter-car').click()
             assert page.evaluate('window.__GAME_TEST__.inCar') is True
@@ -59,7 +68,7 @@ with tempfile.TemporaryDirectory() as folder:
             ctx.set_offline(True);page.reload(wait_until='domcontentloaded');page.wait_for_function('window.__GAME_TEST__?.ready === true',timeout=90000)
             page.locator('#start').click();page.screenshot(path=str(OUTPUT/'06-offline.png'));ctx.set_offline(False)
             assert not errors,errors
-            report={'status':'passed','map':data,'state_after_walk':walker,'state_after_drive':state,'offline_reload':True,'javascript_errors':errors,'render':page.evaluate('window.__GAME_TEST__.render')}
+            report={'status':'passed','map':data,'tour':tour,'state_after_walk':walker,'state_after_drive':state,'offline_reload':True,'javascript_errors':errors,'render':page.evaluate('window.__GAME_TEST__.render')}
             (OUTPUT/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print(json.dumps(report,ensure_ascii=False))
         except Exception:
             page.screenshot(path=str(OUTPUT/'failure.png'));(OUTPUT/'errors.json').write_text(json.dumps(errors,ensure_ascii=False));raise
