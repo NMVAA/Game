@@ -161,7 +161,7 @@ export function startNearHouse59(world,tour){
       }
       if(open&&open.distanceToHome<=15)break;
     }
-    if(open&&(!best||open.distanceToHome<best.distanceToHome)){
+    if(open && best && distance(open.walker,best.car)<=5.35 && distance(open.walker,best.car)>=2.35 && (!best||open.distanceToHome<best.distanceToHome)){
       const car=best?.car||{x:tour.start.x,z:tour.start.z,angle:Math.atan2(tour.route[1].x-tour.start.x,tour.route[1].z-tour.start.z)};
       best={...open,car,source:'safe-address-vicinity'};
     }
