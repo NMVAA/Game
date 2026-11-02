@@ -18,6 +18,25 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
+      - name: Fetch Pokrov OpenStreetMap geometry
+        shell: bash
+        run: |
+          mkdir -p map
+          QUERY='[out:json][timeout:90];(way["highway"](47.638,34.075,47.669,34.118);way["building"](47.638,34.075,47.669,34.118););out geom;'
+          for ENDPOINT in 'https://overpass.kumi.systems/api/interpreter' 'https://overpass-api.de/api/interpreter' 'https://overpass.nchc.org.tw/api/interpreter'; do
+            echo "Trying $ENDPOINT"
+            if curl --fail --silent --show-error --location --retry 2 --retry-delay 4 --max-time 120 --data-urlencode "data=$QUERY" "$ENDPOINT" -o map/pokrov.tmp; then
+              if python3 -c 'import json; x=json.load(open("map/pokrov.tmp")); assert len(x.get("elements",[])) > 20'; then
+                mv map/pokrov.tmp map/pokrov.json
+                echo "OSM geometry downloaded"
+                break
+              fi
+            fi
+          done
+          rm -f map/pokrov.tmp
+          if [ ! -s map/pokrov.json ]; then
+            echo "::warning::Overpass servers unavailable; live map loading will be attempted in the browser."
+          fi
       - name: Upload site
         uses: actions/upload-pages-artifact@v4
         with:
