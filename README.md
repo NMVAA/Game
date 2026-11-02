@@ -2,6 +2,14 @@
 
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
+## Version 0.4.1 — Spawn beside Centralna 59
+
+- The first-person character now starts near the mapped/approximate house-number 59 reference, not at an arbitrary route node.
+- Starting location and route restart select a collision-free location near the address and a nearby mapped-road parking spot.
+- The game preserves money and walking distance but resets position to house 59 at every new launch.
+- Browser and CI tests reject builds where the start is farther than 55 metres from the house reference.
+- House 59 anchor remains **approximate** without a verified OSM address and does not imply a known front door.
+
 ## Version 0.4.0 — Centralna 59 → Lyceum 6
 
 - First-person pedestrian tour of the Centralna 59–Chiatur­ska 6 corridor, with route-finding on mapped OSM walkable streets and paths.
