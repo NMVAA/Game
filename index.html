@@ -21,6 +21,14 @@
     <section id="contract"><div class="eyebrow">МІСЬКИЙ КУР’ЄР <span id="countdown">—</span></div><div id="mission-name">Перша доставка</div><div class="route-line"><span id="distance">— м</span><span id="routehint">Рухайся до позначки</span></div><div class="contract-progress"><i id="arrival"></i></div></section>
     <section id="navigation"><canvas id="minimap" width="320" height="320" aria-label="Мінікарта маршруту"></canvas><div id="street">Покров</div></section>
     <div id="walkstatus" hidden><div class="eyebrow">ПРОГУЛЯНКА / ВІД ПЕРШОЇ ОСОБИ</div><strong id="walkstreet">Покров</strong><div><span id="walkdistance">0 м</span> пройдено · <span id="walkpace">Ходьба</span></div><div class="walkstamina"><span>ВИТРИВАЛІСТЬ</span><progress id="stamina" max="100" value="100"></progress></div></div>
+    <section id="tourcard" hidden aria-label="Пішохідний маршрут від Центральної 59 до ліцею 6">
+      <div class="eyebrow">МАРШРУТ РАЙОНОМ</div>
+      <strong id="tour-name">Центральна, 59 → Ліцей №6</strong>
+      <div class="tourmeta"><b id="tour-distance">— м</b><span id="tour-hint">Завантаження маршруту</span></div>
+      <div class="tourline"><i id="tour-progress"></i></div>
+      <small id="tour-accuracy">Дороги — OSM, орієнтири перевіряються</small>
+      <div class="tourbuttons"><button id="tour-restart">НА ПОЧАТОК</button><button id="tour-free">ВІЛЬНИЙ ОГЛЯД</button></div>
+    </section>
     <div id="reticle" hidden aria-hidden="true">·</div>
     <div id="telemetry"><div id="driveinfo"><span id="gear">N</span><strong id="speed">0</strong><small>км/год</small></div><div class="meterrow"><span>ПАЛИВО</span><progress id="fuel" max="100" value="100"></progress></div><div class="meterrow"><span>КУЗОВ</span><progress id="health" max="100" value="100"></progress></div></div>
     <div id="wallet"><span id="funds">0 ₴</span><small id="fps"></small></div>
@@ -39,8 +47,8 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="boot" class="overlay"><section class="panel hero">
     <div class="eyebrow">ПІШОХІДНИЙ СИМУЛЯТОР / THREE.JS</div><h1>GAME<span>ДОСЛІДЖУЙ МІСТО.</span></h1>
-    <p class="lead">Реальні вулиці Покрова.<br>Прогулянки від першої особи, відкритий світ і автомобіль.</p>
-    <div class="featureline"><span>ПРОГУЛЯНКА</span><span>ОГЛЯД СВАЙПОМ</span><span>ДЕНЬ / НІЧ</span></div>
+    <p class="lead">Центральна, 59 → ліцей №6.<br>Прогулянка реальними вулицями Покрова та навколишнім районом.</p>
+    <div class="featureline"><span>МАРШРУТ ДО ШКОЛИ</span><span>ОГЛЯД СВАЙПОМ</span><span>ДЕНЬ / НІЧ</span></div>
     <div class="loading"><i id="loadbar"></i></div><p id="loadstatus" role="status">Запуск графічного рушія…</p>
     <button id="start" class="primary" disabled>ЗАВАНТАЖЕННЯ…</button><button id="retry" hidden>Повторити завантаження</button>
     <p class="hint">Пішки: джойстик ліворуч, свайп по світу — огляд, кнопки бігу та стрибка праворуч.<br>Можна підійти до машини та сісти за кермо.</p>
