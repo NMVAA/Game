@@ -11,46 +11,53 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/ui.css?v=0.2.0">
+  <link rel="stylesheet" href="./src/ui.css?v=0.3.0">
 </head>
 <body>
   <canvas id="scene" aria-label="Тривимірний світ гри"></canvas>
   <div id="vignette" aria-hidden="true"></div>
-  <header id="header"><div class="wordmark">GAME <span>0.2</span></div><div id="mapstate">Завантаження міста</div><button id="pause" aria-label="Меню та пауза">Ⅱ</button></header>
+  <header id="header"><div class="wordmark">GAME <span>0.3</span></div><div id="mapstate">Завантаження міста</div><button id="pause" aria-label="Меню та пауза">Ⅱ</button></header>
   <main id="hud" hidden>
     <section id="contract"><div class="eyebrow">МІСЬКИЙ КУР’ЄР <span id="countdown">—</span></div><div id="mission-name">Перша доставка</div><div class="route-line"><span id="distance">— м</span><span id="routehint">Рухайся до позначки</span></div><div class="contract-progress"><i id="arrival"></i></div></section>
     <section id="navigation"><canvas id="minimap" width="320" height="320" aria-label="Мінікарта маршруту"></canvas><div id="street">Покров</div></section>
+    <div id="walkstatus" hidden><div class="eyebrow">ПРОГУЛЯНКА / ВІД ПЕРШОЇ ОСОБИ</div><strong id="walkstreet">Покров</strong><div><span id="walkdistance">0 м</span> пройдено · <span id="walkpace">Ходьба</span></div><div class="walkstamina"><span>ВИТРИВАЛІСТЬ</span><progress id="stamina" max="100" value="100"></progress></div></div>
+    <div id="reticle" hidden aria-hidden="true">·</div>
     <div id="telemetry"><div id="driveinfo"><span id="gear">N</span><strong id="speed">0</strong><small>км/год</small></div><div class="meterrow"><span>ПАЛИВО</span><progress id="fuel" max="100" value="100"></progress></div><div class="meterrow"><span>КУЗОВ</span><progress id="health" max="100" value="100"></progress></div></div>
     <div id="wallet"><span id="funds">0 ₴</span><small id="fps"></small></div>
     <button id="camera" aria-label="Змінити камеру">КАМЕРА</button>
+    <div id="walkcontrols" hidden>
+      <div id="walkpad" role="group" aria-label="Джойстик пересування"><div id="walkthumb"><span>✥</span></div><small>РУХ</small></div>
+      <div class="walkactions"><button id="sprint" data-walk="run">БІГ</button><button id="jump" data-walk="jump">СТРИБОК</button><button id="enter-car">СІСТИ В АВТО</button></div>
+    </div>
     <div id="controls">
       <div id="steering" data-control="steer" role="slider" aria-label="Кермо" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="steer-track"></div><span class="leftmark">‹</span><span class="rightmark">›</span><div id="thumb"><span>+</span></div><small>КЕРМО</small></div>
       <button id="handbrake" data-control="handbrake" aria-label="Ручне гальмо">РУЧНИК</button>
+      <button id="exit-car">ВИЙТИ З АВТО</button>
       <div id="pedals"><button data-control="brake" id="brake" aria-label="Гальмо або задній хід"><b>▰</b><small>ГАЛЬМО</small></button><button data-control="gas" id="gas" aria-label="Газ"><b>↑</b><small>ГАЗ</small></button></div>
     </div>
   </main>
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="boot" class="overlay"><section class="panel hero">
-    <div class="eyebrow">ВІДКРИТЕ МІСТО / THREE.JS</div><h1>GAME<span>ВІДЧУЙ ДОРОГУ.</span></h1>
-    <p class="lead">Реальні вулиці Покрова.<br>Твій автомобіль. Твій маршрут.</p>
-    <div class="featureline"><span>ЗІТКНЕННЯ</span><span>МАРШРУТИ</span><span>ДЕНЬ / НІЧ</span></div>
+    <div class="eyebrow">ПІШОХІДНИЙ СИМУЛЯТОР / THREE.JS</div><h1>GAME<span>ДОСЛІДЖУЙ МІСТО.</span></h1>
+    <p class="lead">Реальні вулиці Покрова.<br>Прогулянки від першої особи, відкритий світ і автомобіль.</p>
+    <div class="featureline"><span>ПРОГУЛЯНКА</span><span>ОГЛЯД СВАЙПОМ</span><span>ДЕНЬ / НІЧ</span></div>
     <div class="loading"><i id="loadbar"></i></div><p id="loadstatus" role="status">Запуск графічного рушія…</p>
     <button id="start" class="primary" disabled>ЗАВАНТАЖЕННЯ…</button><button id="retry" hidden>Повторити завантаження</button>
-    <p class="hint">Ліворуч — кермо, праворуч — газ і гальмо.<br>На позначці доставки зупини автомобіль.</p>
+    <p class="hint">Пішки: джойстик ліворуч, свайп по світу — огляд, кнопки бігу та стрибка праворуч.<br>Можна підійти до машини та сісти за кермо.</p>
     <p class="disclosure">Дороги та контури — OpenStreetMap. Фасади, висоти без OSM-даних і декор — процедурна візуалізація, не точна реконструкція.</p>
   </section></div>
   <div id="menu" class="overlay" hidden><section class="panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="menu-title">
     <div class="eyebrow">GAME / ПАУЗА</div><h2 id="menu-title">Твоя поїздка</h2><div id="saveinfo" class="hint"></div>
-    <div class="settings"><label>Графіка<select id="quality"><option value="auto">Автоматична</option><option value="low">Економна</option><option value="high">Висока</option></select></label><label>Режим<select id="mode"><option value="delivery">Доставки</option><option value="free">Вільна поїздка</option></select></label></div>
+    <div class="settings"><label>Графіка<select id="quality"><option value="auto">Автоматична</option><option value="low">Економна</option><option value="high">Висока</option></select></label><label>Режим<select id="mode"><option value="walk" selected>Прогулянка (FPS)</option><option value="delivery">Доставки на авто</option><option value="free">Вільна поїздка</option></select></label></div>
     <div class="button-grid"><button id="night">День / ніч</button><button id="sound">Звук: увімк.</button><button id="fullscreen">На весь екран</button><button id="rescue">На дорогу · 50 ₴</button></div>
     <h3>Гараж <span id="garage-money"></span></h3><div class="garage"><button id="repair">Ремонт · 150 ₴</button><button id="refuel">Паливо · 80 ₴</button><button id="engine">Двигун · 900 ₴</button><button id="tires">Шини · 650 ₴</button></div>
     <button id="install" hidden>Встановити Game</button><button id="resume" class="primary">ПРОДОВЖИТИ</button>
-    <p id="mapdetails" class="disclosure"></p><p class="hint keyboard">Клавіатура: WASD / стрілки, пробіл — ручник, C — камера, Esc — пауза.</p>
+    <p id="mapdetails" class="disclosure"></p><p class="hint keyboard">Пішки: WASD, Shift — біг, Space — стрибок, мишею по екрану — огляд, E — сісти в авто / вийти. За кермом: WASD, Space — ручник, C — камера, Esc — пауза.</p>
   </section></div>
   <footer><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a></footer>
   <script type="module">
     // Dynamic import exposes boot errors instead of leaving an unresponsive Start button.
-    import('./src/game.mjs?v=0.2.0').catch(error=>{console.error(error);document.getElementById('loadstatus').textContent='Не вдалося запустити Game: '+error.message;document.getElementById('retry').hidden=false;document.getElementById('retry').onclick=()=>location.reload();});
+    import('./src/game.mjs?v=0.3.0').catch(error=>{console.error(error);document.getElementById('loadstatus').textContent='Не вдалося запустити Game: '+error.message;document.getElementById('retry').hidden=false;document.getElementById('retry').onclick=()=>location.reload();});
   </script>
 </body>
 </html>
