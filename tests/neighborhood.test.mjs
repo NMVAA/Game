@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {parseMap,project,distance} from '../src/core.mjs';
-import {NEIGHBORHOOD,findCentralna59,buildNeighborhoodRoute,routeProgress} from '../src/neighborhood.mjs';
+import {NEIGHBORHOOD,findCentralna59,buildNeighborhoodRoute,routeProgress,startNearHouse59} from '../src/neighborhood.mjs';
 function fixture(){
   const elements=[],n=8,baseLat=47.6530,baseLon=34.1175;
   const ids=Array.from({length:n},(_,y)=>Array.from({length:n},(_,x)=>1+y*n+x));
@@ -59,4 +59,26 @@ test('independent Visicom and municipal references keep the tour geographically 
 test('unnamed house 59 is not accepted as mapped Centralna 59',()=>{
   const data=fixture();data.elements.push({type:'node',id:999,lat:47.65355,lon:34.12514,tags:{'addr:housenumber':'59'}});
   assert.equal(findCentralna59(data).precision,'approximate');
+});
+
+test('start is safely beside Centralna 59, rather than at an arbitrary road node',()=>{
+  const data=fixture(),world=parseMap(data),tour=buildNeighborhoodRoute(world,data);
+  const spawn=startNearHouse59(world,tour);
+  assert.ok(spawn.distanceToHome<=55,spawn);
+  assert.ok(distance(spawn.walker,tour.home)<=55);
+  assert.ok(distance(spawn.walker,spawn.car)>2.35&&distance(spawn.walker,spawn.car)<5.35,spawn);
+  assert.ok(!world.obstacles.near(spawn.walker.x,spawn.walker.z,.5).some(x=>
+    x.poly?.length && spawn.walker.x>=x.minX&&spawn.walker.x<=x.maxX&&spawn.walker.z>=x.minZ&&spawn.walker.z<=x.maxZ));
+  assert.ok(Number.isFinite(spawn.walker.yaw));
+});
+test('start spot avoids mapped house footprint instead of teleporting inside a building',()=>{
+  const data=fixture(),world=parseMap(data),tour=buildNeighborhoodRoute(world,data);
+  const h=tour.home,block={minX:h.x-5,maxX:h.x+5,minZ:h.z-5,maxZ:h.z+5,poly:[
+    {x:h.x-5,z:h.z-5},{x:h.x+5,z:h.z-5},{x:h.x+5,z:h.z+5},{x:h.x-5,z:h.z+5}
+  ]};
+  world.obstacles.insert(block,block.minX,block.minZ,block.maxX,block.maxZ);
+  const spawn=startNearHouse59(world,tour);
+  assert.ok(spawn.distanceToHome>5,spawn);
+  assert.ok(spawn.distanceToHome<=55,spawn);
+  assert.ok(!(spawn.walker.x>=block.minX&&spawn.walker.x<=block.maxX&&spawn.walker.z>=block.minZ&&spawn.walker.z<=block.maxZ));
 });
