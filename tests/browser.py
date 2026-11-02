@@ -1,5 +1,5 @@
 """Real Chromium/WebGL smoke tests against the packaged /Game/ path."""
-import functools,http.server,json,pathlib,tempfile,threading
+import functools,http.server,json,pathlib,tempfile,threading,shutil
 from playwright.sync_api import sync_playwright
 ROOT=pathlib.Path(__file__).resolve().parents[1];OUTPUT=ROOT/'test-results';OUTPUT.mkdir(exist_ok=True)
 with tempfile.TemporaryDirectory() as folder:
@@ -20,8 +20,11 @@ with tempfile.TemporaryDirectory() as folder:
             page.locator('#start').click();page.wait_for_timeout(700)
             assert page.evaluate('window.__GAME_TEST__.paused') is False
             # A held pedal must work and pointer capture must release correctly.
-            rect=page.locator('#gas').bounding_box();page.mouse.move(rect['x']+rect['width']/2,rect['y']+rect['height']/2);page.mouse.down();page.wait_for_timeout(1800);page.mouse.up()
-            state=page.evaluate('window.__GAME_TEST__.state');assert state['travel']>.3,state
+            rect=page.locator('#gas').bounding_box();page.mouse.move(rect['x']+rect['width']/2,rect['y']+rect['height']/2);page.mouse.down()
+            # Wait on simulation progress: software WebGL rendering is not real-time.
+            page.wait_for_function('window.__GAME_TEST__.state.travel > 2',timeout=45000)
+            page.mouse.up()
+            state=page.evaluate('window.__GAME_TEST__.state');assert state['travel']>2,state
             page.screenshot(path=str(OUTPUT/'02-drive-portrait.png'))
             page.locator('#pause').click();assert page.evaluate('window.__GAME_TEST__.paused') is True
             page.locator('#quality').select_option('low');page.locator('#night').click();page.locator('#resume').click();page.wait_for_timeout(700)
@@ -41,4 +44,6 @@ with tempfile.TemporaryDirectory() as folder:
             (OUTPUT/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print(json.dumps(report,ensure_ascii=False))
         except Exception:
             page.screenshot(path=str(OUTPUT/'failure.png'));(OUTPUT/'errors.json').write_text(json.dumps(errors,ensure_ascii=False));raise
-        finally:browser.close();server.shutdown()
+        finally:
+            shutil.make_archive(str(OUTPUT/'game-debug-site'),'zip',ROOT/'site')
+            browser.close();server.shutdown()
