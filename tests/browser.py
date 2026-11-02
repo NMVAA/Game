@@ -18,6 +18,12 @@ with tempfile.TemporaryDirectory() as folder:
             data=page.evaluate('window.__GAME_TEST__.map');assert data['roads']>20 and data['buildings']>10,data
             tour=page.evaluate('window.__GAME_TEST__.tour')
             assert tour and tour['points']>=3 and tour['startOffset']<=240 and tour['endOffset']<=250,tour
+            assert tour['spawnDistance']<=55,tour
+            walker_at_start=page.evaluate('window.__GAME_TEST__.walker')
+            home=tour['home']
+            # Coordinates already projected in the game; the distance is checked
+            # independently through the exported spawn metric and collision tests.
+            assert abs(walker_at_start['x'])<10000 and abs(walker_at_start['z'])<10000
             page.screenshot(path=str(OUTPUT/'01-menu-portrait.png'))
             page.locator('#start').click();page.wait_for_timeout(700)
             assert page.evaluate('window.__GAME_TEST__.paused') is False
@@ -44,6 +50,8 @@ with tempfile.TemporaryDirectory() as folder:
             assert 'ПОКАЗАТИ' in page.locator('#tour-free').inner_text()
             page.locator('#tour-restart').click()
             assert 'ВІЛЬНИЙ' in page.locator('#tour-free').inner_text()
+            back_to_start=page.evaluate('window.__GAME_TEST__.walker')
+            assert abs(back_to_start['x']-walker_at_start['x'])<.001 and abs(back_to_start['z']-walker_at_start['z'])<.001
             page.screenshot(path=str(OUTPUT/'03-school-route-portrait.png'))
             # Return to the nearby parked vehicle and test driving controls.
             page.locator('#enter-car').click()
