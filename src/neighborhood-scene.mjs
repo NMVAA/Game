@@ -41,7 +41,7 @@ export function makeNeighborhoodOverlay(scene,world,tour,data) {
   }
   const base=new T.MeshBasicMaterial({color:'#b7e5d7',transparent:true,opacity:.65,side:T.DoubleSide,depthWrite:false});
   const startRing=new T.Mesh(new T.RingGeometry(2.2,2.55,40),base);
-  startRing.rotation.x=-Math.PI/2;startRing.position.set(tour.start.x,.16,tour.start.z);group.add(startRing);
+  startRing.rotation.x=-Math.PI/2;const startSpot=tour.startSpot?.walker||tour.start;startRing.position.set(startSpot.x,.16,startSpot.z);group.add(startRing);
   const endMat=new T.MeshBasicMaterial({color:'#ffd47f',transparent:true,opacity:.82,side:T.DoubleSide,depthWrite:false});
   const endRing=new T.Mesh(new T.RingGeometry(2.6,3.05,48),endMat);
   endRing.rotation.x=-Math.PI/2;endRing.position.set(tour.end.x,.18,tour.end.z);group.add(endRing);
