@@ -47,10 +47,16 @@ function modeUI(){const onFoot=!inCar;document.body.classList.toggle('is-walking
 }
 function restartNeighbourhoodTour(){
   if(!neighborhood||!world){notice('Детальна карта маршруту ще не готова.');return;}
-  const route=neighborhood.route;
-  const first=route.find(p=>!collisionAt(world,p,.4))||route[0];
-  const i=route.indexOf(first),next=route[Math.min(route.length-1,i+1)]||route[1];
-  walker.x=first.x;walker.z=first.z;walker.yaw=Math.atan2(next.x-first.x,next.z-first.z);
+  const route=neighborhood.route,first=route[0],next=route[1];
+  const dx=next.x-first.x,dz=next.z-first.z,len=Math.max(.01,Math.hypot(dx,dz));
+  const nx=dz/len,nz=-dx/len;
+  let placed=false;
+  for(const offset of [3.4,-3.4,5.5,-5.5,8,-8]){
+    const p={x:first.x+nx*offset,z:first.z+nz*offset};
+    if(!collisionAt(world,p,.45)&&distance(p,state)>2.25){walker.x=p.x;walker.z=p.z;placed=true;break;}
+  }
+  if(!placed){const safe=route.find(p=>!collisionAt(world,p,.45)&&distance(p,state)>2.25)||first;walker.x=safe.x;walker.z=safe.z;}
+  walker.yaw=Math.atan2(dx,dz);
   walker.pitch=0;walker.vx=walker.vz=walker.vertical=walker.vy=0;walker.speed=0;
   tourActive=true;tourComplete=false;neighborhoodView?.setVisible(true);
   $('tour-free').textContent='ВІЛЬНИЙ ОГЛЯД';save();updateTourHUD();notice('Маршрут від Центральної, 59 до ліцею №6.');
