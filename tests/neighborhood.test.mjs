@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {parseMap,project,distance} from '../src/core.mjs';
 import {NEIGHBORHOOD,findCentralna59,buildNeighborhoodRoute,routeProgress} from '../src/neighborhood.mjs';
 function fixture(){
@@ -43,4 +44,19 @@ test('route guidance identifies deviations without fabricating straight-line pat
   const data=fixture(),tour=buildNeighborhoodRoute(parseMap(data),data);
   const off={x:tour.start.x+500,z:tour.start.z+500};
   assert.equal(routeProgress(tour.route,off).offRoute,true);
+});
+
+test('independent Visicom and municipal references keep the tour geographically grounded',()=>{
+  const refs=JSON.parse(fs.readFileSync(new URL('../map/neighborhood-references.json',import.meta.url),'utf8'));
+  assert.equal(refs.start.status,'address_exists_coordinate_approximate');
+  const adjacent=refs.start.sources.find(p=>p.entity?.includes('61'));
+  assert.ok(adjacent&&adjacent.provider==='Visicom maps');
+  const fallback=project(refs.start.proposed.lon,refs.start.proposed.lat);
+  assert.ok(distance(fallback,project(adjacent.lon,adjacent.lat))<140);
+  const school=refs.destination.point;
+  assert.ok(distance(project(school.lon,school.lat),project(NEIGHBORHOOD.school.lon,NEIGHBORHOOD.school.lat))<.01);
+});
+test('unnamed house 59 is not accepted as mapped Centralna 59',()=>{
+  const data=fixture();data.elements.push({type:'node',id:999,lat:47.65355,lon:34.12514,tags:{'addr:housenumber':'59'}});
+  assert.equal(findCentralna59(data).precision,'approximate');
 });
