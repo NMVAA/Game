@@ -35,11 +35,13 @@ jobs:
           node --input-type=module <<'JS'
           import fs from 'node:fs';
           import {parseMap} from './src/core.mjs';
-          import {buildNeighborhoodRoute} from './src/neighborhood.mjs';
+          import {buildNeighborhoodRoute,startNearHouse59} from './src/neighborhood.mjs';
           const data=JSON.parse(fs.readFileSync('site/map/pokrov.json','utf8'));
-          const tour=buildNeighborhoodRoute(parseMap(data),data);
+          const world=parseMap(data),tour=buildNeighborhoodRoute(world,data);
           if(tour.route.length<3 || tour.startOffset>240 || tour.endOffset>250)throw Error('School walking corridor missing');
-          console.log('Centralna 59 → Lyceum 6',tour.routeType,Math.round(tour.length)+'m','home accuracy:',tour.home.precision);
+          const spawn=startNearHouse59(world,tour);
+          if(spawn.distanceToHome>55)throw Error('Player does not start beside house 59');
+          console.log('Centralna 59 → Lyceum 6',tour.routeType,Math.round(tour.length)+'m','home accuracy:',tour.home.precision,'spawn distance:',spawn.distanceToHome.toFixed(1)+'m');
           console.log('OSM streets on route:',tour.streets.join(' → '));
           JS
       - name: Install browser test runner
