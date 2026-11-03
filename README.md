@@ -2,6 +2,12 @@
 
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
+## Version 0.4.6 — Reliable single-press jumping
+
+- First-person jumping now responds to a new press, preventing accidental repeated jumps while a mobile touch button or keyboard Space is held.
+- Releasing and pressing the jump control again reliably starts the next jump after landing.
+- Added a regression test for hold-to-jump, landing, and re-arming; refreshed the versioned PWA cache.
+
 ## Version 0.4.5 — Fail-safe braking when the engine stops
 
 - Service brakes now decelerate the car even with empty fuel or 0% engine health, so a damaged or stranded car does not coast uncontrollably.
