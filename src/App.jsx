@@ -277,11 +277,42 @@ function Controls({game,scene,onChoice}){
 
 function ChoiceOutcome({outcome,onContinue}){
  const {changes,delayed,plot}=outcome;
+ const scrollRef=useRef(null);
+ const touchRef=useRef(null);
+ const startSwipe=e=>{
+  const touch=e.touches?.[0];
+  if(!touch)return;
+  const node=scrollRef.current;
+  const fromContent=e.target instanceof Element&&!!e.target.closest('.outcome-scroll');
+  touchRef.current={x:touch.clientX,y:touch.clientY,
+   fromContent,scrollTop:node?.scrollTop||0,
+   scrollable:!!node&&node.scrollHeight>node.clientHeight+8,
+   maxScroll:node?Math.max(0,node.scrollHeight-node.clientHeight):0};
+ };
+ const endSwipe=e=>{
+  const start=touchRef.current;
+  touchRef.current=null;
+  const touch=e.changedTouches?.[0];
+  if(!start||!touch)return;
+  const dx=touch.clientX-start.x,dy=touch.clientY-start.y;
+  if(Math.abs(dy)<85||Math.abs(dy)<Math.abs(dx)*1.25)return;
+  const node=scrollRef.current;
+  if(start.fromContent&&start.scrollable){
+   // A long outcome must remain scrollable; only a deliberate gesture
+   // outward from the first/last line closes the result.
+   const moved=Math.abs((node?.scrollTop||0)-start.scrollTop);
+   if(moved>5)return;
+   const atEdge=dy>0?start.scrollTop<=3:start.scrollTop>=start.maxScroll-3;
+   if(!atEdge)return;
+  }
+  onContinue();
+ };
  return <motion.div className="choice-outcome-overlay" role="dialog" aria-modal="true" aria-label="Результат твого рішення"
+  onTouchStart={startSwipe} onTouchEnd={endSwipe} onTouchCancel={()=>{touchRef.current=null;}}
   initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}}>
   <motion.div className="choice-outcome-sheet" initial={{y:32,scale:.96}} animate={{y:0,scale:1}}
    exit={{y:18,opacity:0}} transition={{type:'spring',stiffness:340,damping:30}}>
-   <div className="outcome-scroll">
+   <div className="outcome-scroll" ref={scrollRef}>
    <div className="outcome-kicker">РЕЗУЛЬТАТ ВИБОРУ</div>
    {plot&&<div className="outcome-story">{plot.name} · Розділ {plot.chapter}/{plot.total}</div>}
    <p className="outcome-situation">{outcome.context}</p>
@@ -321,7 +352,7 @@ function ChoiceOutcome({outcome,onContinue}){
    <button className="outcome-continue" type="button" onClick={onContinue}>
      ДАЛІ ДО ІСТОРІЇ <span>→</span>
    </button>
-   <p className="outcome-auto">Прочитай результат у своєму темпі. Нічого не зникне автоматично.</p>
+   <p className="outcome-auto"><span aria-hidden="true">↑ ↓</span> Свайп угору або вниз — далі. Довгий текст можна прокрутити.</p>
    </div>
   </motion.div>
  </motion.div>;
