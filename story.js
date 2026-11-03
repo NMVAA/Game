@@ -4,6 +4,7 @@ import {initMemory,remember,memoryOf,currentPartnerId,makePromise,resolvePromise
 import {initNpcWorld,advanceNpcWorld} from './npc.js';
 import {npcScene,resolveNpcChoice} from './npc-scenes.js';
 import {initAdultLife,adultRelationshipScene,adultNightScene,adultPendingScene,resolveAdultChoice} from './adult-life.js';
+import {advancePlots,initPlots,plotScene,resolvePlotChoice} from './plot-engine.js';
 
 const cap=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
 const roll=g=>{g.seed=(Math.imul(g.seed,1664525)+1013904223)>>>0;return g.seed/4294967296;};
@@ -63,6 +64,11 @@ function pendingEvent(g){
  }
  if(item.kind?.startsWith('npcPartner')&&item.payload?.partnerId!==g.personal?.personId){
    markArc(g,item);return pendingEvent(g);
+ }
+ if(item.kind==='plotScene'){
+   const chapter=plotScene(g,item);
+   markArc(g,item);
+   return chapter||pendingEvent(g);
  }
  if(item.kind?.startsWith('adult')){
    const adult=adultPendingScene(g,item);
@@ -302,6 +308,7 @@ export function getScene(g){
  ensureStory(g);
  updateMemoryClock(g);
  advanceNpcWorld(g);
+ advancePlots(g);
  if(g.match||g.day===6)return match(g);
  const today=dateNum(g),s=g.story;
  if(s.dayKey!==String(today)){s.dayKey=String(today);s.step=0;s.active=null;}
@@ -322,7 +329,8 @@ export function takeChoice(g,side){
  if(!selected)return {ok:false,message:'Немає такого рішення.'};
  const id=selected.id;
  let result={ok:true,message:'Рішення прийнято.'},advance=true;
- if(id.startsWith('npc:'))result=resolveNpcChoice(g,id);
+ if(id.startsWith('plot:'))result=resolvePlotChoice(g,id);
+ else if(id.startsWith('npc:'))result=resolveNpcChoice(g,id);
  else if(id.startsWith('adult:'))result=resolveAdultChoice(g,id);
  else if(id.startsWith('train:')){
   const skill=id.slice(6);
@@ -660,7 +668,7 @@ export function takeChoice(g,side){
  if(!result.ok){return result;}
  const before=scene.title;
  const summary=result.message==='Рішення прийнято.'?selected.sub:result.message;
- record(g,before+' — '+selected.label,summary);
+ record(g,(scene.plot?'['+scene.plot.name+' · '+scene.plot.phase+'] ':'')+before+' — '+selected.label,summary);
  s.lastEvent=scene.id;
  s.active=null;
  if(advance){
@@ -673,6 +681,7 @@ export function takeChoice(g,side){
  if(s.sponsor&&s.scandal>48&&!s.flags.sponsorCrisis){setFlag(g,'sponsorCrisis',true);postpone(g,'sponsorThreat',2);}
  // Advance other characters on the in-game calendar, never the wall clock.
  advanceNpcWorld(g);
+ advancePlots(g);
  if(g.personal.personId&&g.personal.tension>=90&&roll(g)<.3){
    social(g,{bond:-12,trust:-9});
    postpone(g,'partnerDoubt',1);
