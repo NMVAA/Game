@@ -318,8 +318,7 @@ function ChoiceOutcome({outcome,onContinue}){
    <button className="outcome-continue" type="button" onClick={onContinue}>
      ДАЛІ ДО ІСТОРІЇ <span>→</span>
    </button>
-   <p className="outcome-auto">Наступна картка відкриється автоматично.</p>
-   <div className="outcome-timer" aria-hidden="true"><i/></div>
+   <p className="outcome-auto">Прочитай результат у своєму темпі. Нічого не зникне автоматично.</p>
   </motion.div>
  </motion.div>;
 }
@@ -387,11 +386,7 @@ export default function App(){
  useEffect(()=>{if(game&&scene)saveGame(game);},[game,revision,scene]);
  const sceneKey=game&&scene?[game.season,game.week,game.day,game.story?.step,game.match?.turns||0,scene.id,revision].join('-'):'intro';
  const flash=useCallback(message=>{setNotice(message);clearTimeout(timeout.current);timeout.current=setTimeout(()=>setNotice(''),2100);},[]);
- useEffect(()=>{
-   if(!outcome)return;
-   const id=setTimeout(()=>setOutcome(null),6200);
-   return()=>clearTimeout(id);
- },[outcome]);
+
  const decide=useCallback(side=>{
   if(!game||journal||outcome)return false;
   if(performance.now()-lastChoice.current<280)return false;
