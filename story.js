@@ -515,6 +515,127 @@ export function takeChoice(g,side){
  else if(id==='night:private'){s.privacy=cap(s.privacy+9);stat(g,{morale:1});}
  else if(id==='public:talk'){s.scandal=cap(s.scandal-12);stat(g,{reputation:-2,stress:3});}
  else if(id==='public:ignore'){s.scandal=cap(s.scandal+9);stat(g,{stress:5});}
+ else if(id==='promise:keep'){
+   const p=resolvePromise(g,'shared-time','kept',currentPartnerId(g));
+   if(p){stat(g,{energy:-12,money:-Math.min(g.money,130),stress:-4,morale:3});social(g,{bond:5,tension:-5});}
+   result={ok:true,message:p?'Партнер запам’ятав, що ти дотримав слова.':'Час разом покращив ваші стосунки.'};
+ }
+ else if(id==='promise:break'){
+   const p=resolvePromise(g,'shared-time','broken',currentPartnerId(g));
+   stat(g,{form:4,energy:-5,stress:5});
+   remember(g,'coach','kept_training_priority','Ти поставив тренування вище особистої обіцянки.',{trust:5,loyalty:4});
+   if(p)queueArc(g,'memoryRelationship',9,{actor:currentPartnerId(g)},'broken-promise-'+dateNum(g));
+   result={ok:true,message:'Тренер задоволений. Образа партнера може повернутися пізніше.'};
+ }
+ else if(id==='board:honest'){
+   remember(g,'coach','board_truth','Ти чесно відповів клубу про переговори.',{trust:7,resentment:-5});
+   remember(g,'agent','revealed_confidentiality','Ти відкрив таємну угоду керівництву.',{trust:-9,resentment:10});
+   stat(g,{reputation:-3,stress:8});
+   if(memoryOf(g,'coach').trust>=56)queueArc(g,'memoryOpportunity',15,{},'board-honesty-'+dateNum(g));
+   result={ok:true,message:'Клуб цінує відвертість. Агент більше не повністю тобі довіряє.'};
+ }
+ else if(id==='board:cover'){
+   remember(g,'coach','covered_secret','Ти приховав від клубу домовленість.',{trust:-13,resentment:18});
+   remember(g,'agent','guarded_secret','Ти захистив агента перед керівництвом.',{trust:9,loyalty:9});
+   queueArc(g,'memoryEvidence',14,{},'board-evidence-'+dateNum(g));
+   stat(g,{stress:10});
+   result={ok:true,message:'Ти виграв час. Але клуб продовжив збирати документи.'};
+ }
+ else if(id==='evidence:admit'){
+   remember(g,'coach','corrected_testimony','Ти визнав приховані деталі після викриття.',{trust:4,resentment:-7});
+   remember(g,'press','correction','Ти офіційно змінив попередню заяву.',{trust:-4,resentment:5});
+   stat(g,{reputation:-9,stress:12});
+   queueArc(g,'memorySelection',10,{},'lineup-after-evidence-'+dateNum(g));
+   result={ok:true,message:'Тренер бачить спробу виправити помилку, але місце у складі під загрозою.'};
+ }
+ else if(id==='evidence:blame'){
+   remember(g,'agent','blamed_for_secret','Ти переклав відповідальність на агента.',{trust:-20,resentment:23});
+   remember(g,'coach','agent_blame','Ти звинуватив агента замість пояснень.',{trust:-6,resentment:10});
+   queueArc(g,'memoryAgent',10,{},'agency-fallout-'+dateNum(g));
+   result={ok:true,message:'Агент скоротив контакти, а клуб продовжує сумніватися.'};
+ }
+ else if(id==='agent:repair'){
+   stat(g,{money:-Math.min(g.money,160),stress:-3});
+   remember(g,'agent','repaired_working_relationship','Ти визнав минулі конфлікти й відновив робочий контакт.',{trust:19,resentment:-21,loyalty:8});
+   result={ok:true,message:'Агент відновлює переговори, хоча попередні образи ще не зникли.'};
+ }
+ else if(id==='agent:replace'){
+   const m=initMemory(g),old=m.actors.agent;
+   m.actors['former-agent-'+dateNum(g)]={...old,memories:[...old.memories]};
+   m.actors.agent={trust:57,affinity:50,resentment:0,loyalty:0,memories:[],lastContact:dateNum(g)};
+   s.agentTrust=57;s.agentDeal=false;
+   stat(g,{money:-Math.min(g.money,900),stress:7});
+   remember(g,'agent','new_representation','Новий агент почав працювати з тобою.',{trust:2});
+   queueArc(g,'memoryOpportunity',12,{},'new-agent-'+dateNum(g));
+   result={ok:true,message:'Ти змінив агента. Старий конфлікт залишився частиною твоєї історії.'};
+ }
+ else if(id==='selection:request'){
+   const captain=memoryOf(g,'captain');
+   const support=(captain?.loyalty||0)>12 || (captain?.trust||0)>65;
+   remember(g,'coach','requested_starting_place','Ти попросив ще один шанс у стартовому складі.',
+     support?{trust:13,resentment:-11}:{trust:-5,resentment:7});
+   stat(g,support?{form:6,stress:-2}:{stress:9,form:-3});
+   result={ok:true,message:support?'Капітан підтримав тебе. Тренер дав шанс.':'Тренер не переконаний. Старі конфлікти все ще впливають.'};
+ }
+ else if(id==='selection:accept'){
+   remember(g,'coach','accepted_rotation','Ти спокійно прийняв конкуренцію за склад.',{trust:5,resentment:-5});
+   stat(g,{form:4,energy:-9,stress:-5});
+   result={ok:true,message:'Тренер помітив твою дисципліну. Повернення в основу ще потрібно заслужити.'};
+ }
+ else if(id==='team:apologize'){
+   remember(g,'captain','apologized_for_conflict','Ти визнав свою участь у конфлікті.',{trust:13,resentment:-20,loyalty:10});
+   remember(g,'coach','resolved_dressing_room','Ти спробував заспокоїти роздягальню.',{trust:4});
+   if(memoryOf(g,'captain').loyalty>=10)queueArc(g,'memoryOpportunity',13,{},'captain-reconciliation-'+dateNum(g));
+   result={ok:true,message:'Капітан поступово повертає довіру. Команда запам’ятала твою реакцію.'};
+ }
+ else if(id==='team:challenge'){
+   remember(g,'captain','escalated_conflict','Ти знову протистояв капітану перед командою.',{trust:-13,resentment:19});
+   remember(g,'coach','unstable_dressing_room','Ти посилив конфлікт у роздягальні.',{trust:-8,resentment:8});
+   stat(g,{stress:10,reputation:1});
+   queueArc(g,'memorySelection',8,{},'captain-rotation-'+dateNum(g));
+   result={ok:true,message:'Частина команди підтримує тебе, але тренер переглядає склад.'};
+ }
+ else if(id==='memory:listen'){
+   const p=currentPartnerId(g);
+   if(p)remember(g,p,'reconciliation','Ти вислухав претензії й визнав старі образи.',{trust:12,resentment:-26,loyalty:7});
+   stat(g,{energy:-9,morale:3,stress:3});
+   result={ok:true,message:'Примирення почалося. Однієї розмови не досить, щоб стерти минуле.'};
+ }
+ else if(id==='memory:boundaries'){
+   const p=currentPartnerId(g);
+   if(p)remember(g,p,'new_boundaries','Ти обрав дистанцію замість примирення.',{trust:-12,resentment:12,loyalty:-8});
+   stat(g,{focus:0,form:3,stress:4});
+   if(g.personal.personId&&g.personal.trust<18){
+     const departed=currentPartnerId(g);
+     remember(g,departed,'relationship_end','Невиконані обіцянки призвели до розриву.',{loyalty:-10});
+     relationshipAction(g,'breakup');
+     result={ok:true,message:'Стосунки завершилися. Цей досвід залишиться в пам’яті персонажа.'};
+   }else result={ok:true,message:'Дистанція дала свободу, але поглибила недовіру.'};
+ }
+ else if(id==='relocation:family'){
+   stat(g,{money:-Math.min(g.money,700),energy:-8});
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'compromised_on_relocation','Ти домовлявся про спільний переїзд.',{trust:10,loyalty:11,resentment:-8});
+   result={ok:true,message:'Ви знайшли компроміс щодо нового міста. Переїзд коштував грошей і часу.'};
+ }
+ else if(id==='relocation:club'){
+   remember(g,'coach','prioritized_new_club','Ти повністю зосередився на новій команді.',{trust:7,loyalty:6});
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'ignored_relocation_needs','Ти не врахував плани партнера після переїзду.',{trust:-14,resentment:18,loyalty:-9});
+   stat(g,{form:5,stress:3});
+   if(currentPartnerId(g))queueArc(g,'memoryRelationship',13,{actor:currentPartnerId(g)},'relocation-argument-'+dateNum(g));
+   result={ok:true,message:'Тренер задоволений. Партнер почувається чужим у новому місті.'};
+ }
+ else if(id==='opportunity:lead'){
+   remember(g,'coach','accepted_responsibility','Ти взяв на себе лідерство у важливому матчі.',{trust:6,loyalty:5});
+   remember(g,'captain','helped_team','Ти допоміг команді в складний момент.',{trust:3,loyalty:6});
+   stat(g,{form:6,energy:-13,stress:5});
+   result={ok:true,message:'Ти отримав більше довіри, але навантаження та очікування зросли.'};
+ }
+ else if(id==='opportunity:team'){
+   remember(g,'captain','shared_spotlight','Ти підтримав команду замість особистих амбіцій.',{trust:8,loyalty:10,resentment:-4});
+   remember(g,'coach','team_first','Ти поставив командний результат вище власного статусу.',{trust:6});
+   stat(g,{morale:5,energy:-5});
+   result={ok:true,message:'Команда пам’ятатиме, що ти поділився відповідальністю.'};
+ }
  else if(id==='match:wait'||id==='match:recover'){advance=false;if(id==='match:recover')stat(g,{energy:5});}
  if(!result.ok){return result;}
  const before=scene.title;
