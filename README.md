@@ -1,5 +1,13 @@
 # Game
 
+## Version 0.5.2 — House 59 foreground and walkable route connection
+
+- Added a pedestrian approach from the safe near-house spawn to the actual mapped OSM school route; collision-tested against buildings and trees. This is **inferred guidance**, not a surveyed or legally confirmed public passage.
+- The route overlay begins at the character instead of 143 metres away; the start screen no longer immediately directs the player to return to an unseen route.
+- Added a patterned, illustrated shop forecourt to break up the previously empty first-person starting field; no satellite textures are copied.
+- Added Playwright and logic tests for connector continuity, route HUD and source precision, and refreshed the PWA cache.
+
+
 ## Version 0.5.1 — Pedestrian route safety for visual-study scenery
 
 - Exclude all authentic OSM walkways and roadways when placing illustrative structures or canopy trees; the new visual layer must not obstruct the school walking route.
