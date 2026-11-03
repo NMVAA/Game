@@ -22,6 +22,7 @@ with tempfile.TemporaryDirectory() as folder:
             assert landscape['visualBuildings']>=3 and landscape['windows']>10,landscape
             tour=page.evaluate('window.__GAME_TEST__.tour')
             assert tour and tour['points']>=3 and tour['startOffset']<=240 and tour['endOffset']<=250,tour
+            assert tour['connectorLength']>10,tour
             assert tour['spawnDistance']<=55,tour
             walker_at_start=page.evaluate('window.__GAME_TEST__.walker')
             home=tour['home']
@@ -36,6 +37,7 @@ with tempfile.TemporaryDirectory() as folder:
             assert page.locator('#walkcontrols').is_visible()
             assert page.locator('#tourcard').is_visible()
             assert 'Ліцей №6' in page.locator('#tour-name').inner_text()
+            assert 'Повернись до маршруту' not in page.locator('#tour-hint').inner_text()
             stick=page.locator('#walkpad').bounding_box()
             # A resting thumb at the centre must not make the player creep.
             page.mouse.move(stick['x']+stick['width']*.5+3,stick['y']+stick['height']*.5+3)
