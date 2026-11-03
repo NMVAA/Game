@@ -3,6 +3,7 @@ import {newGame,gameClock,scorePlayer,train,meet,relationshipAction,recover,nego
 import {initMemory,remember,memoryOf,currentPartnerId,makePromise,resolvePromise,queueArc,markArc,updateMemoryClock,careerAccess} from './memory.js';
 import {initNpcWorld,advanceNpcWorld} from './npc.js';
 import {npcScene,resolveNpcChoice} from './npc-scenes.js';
+import {initAdultLife,adultRelationshipScene,adultNightScene,adultPendingScene,resolveAdultChoice} from './adult-life.js';
 
 const cap=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
 const roll=g=>{g.seed=(Math.imul(g.seed,1664525)+1013904223)>>>0;return g.seed/4294967296;};
@@ -24,20 +25,20 @@ function record(g,label,result){
   timeline(g,result,'story');
 }
 export function ensureStory(g){
- if(g.story?.version===3){initMemory(g);initNpcWorld(g);return g.story;}
+ if(g.story?.version===3){initMemory(g);initNpcWorld(g);initAdultLife(g);return g.story;}
  // Migrate existing Football Life careers without replacing their decisions,
  // money, relationships, previous scandals or scheduled story events.
  if(g.story?.version===2){
    g.story.version=3;
    g.story.pending ||= [];g.story.flags ||= {};g.story.journal ||= [];
-   initMemory(g);initNpcWorld(g);
+   initMemory(g);initNpcWorld(g);initAdultLife(g);
    return g.story;
  }
  g.story={version:3,step:0,dayKey:'',pending:[],flags:{},journal:[],
    agentTrust:58,clubTrust:58,media:22,privacy:68,temptation:0,sponsor:0,
    scandal:0,financialPressure:0,romanceHeat:0,focus:55,agentDeal:false,
    lastEvent:'',matches:0};
- initMemory(g);initNpcWorld(g);return g.story;
+ initMemory(g);initNpcWorld(g);initAdultLife(g);return g.story;
 }
 function training(g){
  const role=POSITIONS.find(x=>x.id===g.position)?.focus||'passing';
@@ -62,6 +63,11 @@ function pendingEvent(g){
  }
  if(item.kind?.startsWith('npcPartner')&&item.payload?.partnerId!==g.personal?.personId){
    markArc(g,item);return pendingEvent(g);
+ }
+ if(item.kind?.startsWith('adult')){
+   const adult=adultPendingScene(g,item);
+   markArc(g,item);
+   return adult||pendingEvent(g);
  }
  markArc(g,item);
  if(item.kind?.startsWith('npc')){
@@ -303,8 +309,8 @@ export function getScene(g){
  let scene;
  if(s.step===0)scene=training(g);
  else if(s.step===1)scene=pendingEvent(g)||agent(g);
- else if(s.step===2)scene=life(g);
- else scene=night(g);
+ else if(s.step===2)scene=adultRelationshipScene(g)||life(g);
+ else scene=adultNightScene(g)||night(g);
  scene.text=limited(scene.text,scene.major?100:20);
  s.active=scene;
  return scene;
@@ -317,6 +323,7 @@ export function takeChoice(g,side){
  const id=selected.id;
  let result={ok:true,message:'Рішення прийнято.'},advance=true;
  if(id.startsWith('npc:'))result=resolveNpcChoice(g,id);
+ else if(id.startsWith('adult:'))result=resolveAdultChoice(g,id);
  else if(id.startsWith('train:')){
   const skill=id.slice(6);
   if(skill==='rest')stat(g,{energy:11,stress:-3,form:-1});
