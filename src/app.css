@@ -268,3 +268,52 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .scene-photo-night:after{background:linear-gradient(180deg,#120e1d14 0%,#1e103943 47%,#0e0d24bb 76%,#090b18f5 100%)}
 .scene-photo-media:after{background:linear-gradient(180deg,#08131b12 0%,#0c193a40 48%,#071626bf 77%,#061018f8 100%)}
 .scene-photo-contract:after{background:linear-gradient(180deg,#12180e12 0%,#1b1b173f 48%,#0d1810c0 77%,#08130bf5 100%)}
+
+
+/* Named branching storylines, shown in the existing journal (not a new tab). */
+.plot-details{
+ flex:none;max-height:min(43dvh,390px);overflow:auto;overscroll-behavior:contain;
+ border:1px solid #9aba7977;border-radius:13px;margin-bottom:11px;
+ padding:0 11px 10px;background:linear-gradient(135deg,#203121,#15251c);
+}
+.plot-details summary{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;
+ align-items:center;justify-content:space-between;gap:8px;cursor:pointer;
+ background:#192b20;padding:13px 2px;color:#d5f5a6;
+ font-size:11px;font-weight:900;letter-spacing:.6px}
+.plot-details summary span{font-size:9px;color:#b4c9a5;font-weight:600;letter-spacing:0}
+.plot-list{display:flex;flex-direction:column;gap:8px}
+.plot-entry{border:1px solid #ffffff22;border-radius:11px;background:#25422ea8;padding:12px}
+.plot-entry.state-aftermath{border-color:#f0c5838c}
+.plot-entry.state-completed{border-color:#9adb9280;opacity:.9}
+.plot-entry-head{display:flex;gap:6px;align-items:center;justify-content:space-between}
+.plot-entry-head b{font-size:14px;color:#f2ffe5;min-width:0}
+.plot-entry-head span{font-size:9px;color:#bceba6;white-space:nowrap}
+.plot-entry.state-aftermath .plot-entry-head span{color:#f4d19a}
+.plot-entry-step{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:9px 0 6px}
+.plot-entry-step small{font-size:10px;color:#cbddc0}
+.plot-entry-step strong{font-size:12px;white-space:nowrap}
+.plot-entry-progress{background:#08170f;height:5px;overflow:hidden;border-radius:9px}
+.plot-entry-progress i{display:block;height:100%;background:linear-gradient(90deg,#80c97c,#c4f586);border-radius:9px}
+.plot-entry p,.plot-none{font-size:11px;line-height:1.45;color:#e1e9dd;margin:8px 0}
+.plot-entry p.plot-ending{color:#f4d6a4;font-weight:750}
+.plot-entry>small{font-size:9px;color:#c3d4b8;display:block;margin-top:8px}
+.plot-next{margin:11px 0 0;border-top:1px solid #ffffff22;padding-top:10px}
+.plot-next strong{font-size:10px;color:#c4ef99;letter-spacing:.6px}
+.plot-next p{font-size:10px;line-height:1.5;color:#d8e8ce;margin:6px 0 0}
+.plot-chapter{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+ padding:8px 10px;border:1px solid #d7e6a963;background:#08180fbe;
+ border-radius:9px;box-shadow:0 4px 18px #0006
+}
+.plot-chapter span{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#c2e990;font-weight:850}
+.plot-chapter b{font-size:11px;text-align:right;color:#f1ffe8;font-weight:850}
+@media(max-height:670px){
+ .plot-details{max-height:31dvh}
+ .plot-entry{padding:8px}
+ .plot-chapter{padding:6px 9px}
+ .plot-chapter span,.plot-chapter b{font-size:9px}
+}
+@media(max-width:350px){
+ .plot-entry-head b{font-size:12px}
+ .plot-entry-head span{font-size:8px}
+}
