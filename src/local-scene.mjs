@@ -79,6 +79,22 @@ export function buildLocalStudy(scene,world){
     world.obstacles.insert(collider,minX,minZ,maxX,maxZ);
     built++;boxes.push(b.id);
   }
+  // Foreground surface inspired by the shop forecourt in the supplied photo.
+  // The dimensions are illustrative, with no implication of exact paving.
+  const paveCanvas=document.createElement('canvas');paveCanvas.width=paveCanvas.height=128;
+  const pc=paveCanvas.getContext('2d');pc.fillStyle='#a5a49b';pc.fillRect(0,0,128,128);
+  for(let row=0;row<8;row++)for(let col=0;col<8;col++){
+    const v=(row*13+col*31)%4;
+    pc.fillStyle=['#b3b0a5','#969990','#b7b3a9','#a4a298'][v];
+    pc.fillRect(col*16+1,row*16+1,14,14);
+  }
+  const paveTex=new T.CanvasTexture(paveCanvas);paveTex.wrapS=paveTex.wrapT=T.RepeatWrapping;paveTex.repeat.set(7,4);
+  paveTex.colorSpace=T.SRGBColorSpace;
+  const forecourt=new T.Mesh(new T.PlaneGeometry(40,24),new T.MeshStandardMaterial({map:paveTex,roughness:.97,side:T.DoubleSide}));
+  forecourt.rotation.x=-Math.PI/2;
+  forecourt.position.set(layout.anchor.x-5,.065,layout.anchor.z+10);
+  group.add(forecourt);
+
   // Distinct wooded ground tone visible from the first-person camera and map.
   // The circle is an artistic density zone, not a traced park boundary.
   const lawn=new T.Mesh(new T.CircleGeometry(1,64),canopyFloor);
