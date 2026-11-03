@@ -1,5 +1,5 @@
 /** Deterministic game logic; no browser or Three.js dependency. Metres and seconds. */
-export const VERSION = '0.4.9';
+export const VERSION = '0.4.10';
 export const ORIGIN = [47.653, 34.094];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const finite = (v, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
@@ -42,15 +42,23 @@ export function parseMap(data) {
   if (!data || !Array.isArray(data.elements)) throw new Error('Неправильний формат геоданих.');
   const roads = [], buildings = [], parks = [], water = [], nodes = new Map(), graph = new Map();
   const roadGrid = new SpatialGrid(65), obstacles = new SpatialGrid(40);
+  // Directional driving graph and undirected connectivity are distinct: one-way
+  // streets still belong to the same physical street network.
+  const connectivity = new Map();
   const rawNodes = new Map(data.elements.filter(e => e.type === 'node').map(e => [e.id, e]));
-  const link = (a, b) => { if (!graph.has(a)) graph.set(a, []); if (!graph.get(a).includes(b)) graph.get(a).push(b); };
+  const link = (a, b, network = graph) => { if (!network.has(a)) network.set(a, []); if (!network.get(a).includes(b)) network.get(a).push(b); };
   for (const e of data.elements) {
     if (e.type !== 'way' || !e.tags) continue;
     const raw = e.geometry || (e.nodes || []).map(n => rawNodes.get(n));
     if (raw.length < 2 || raw.some(g => !g || !Number.isFinite(g.lon) || !Number.isFinite(g.lat))) continue;
     const points = raw.map(g => project(g.lon, g.lat)), t = e.tags;
     if (t.highway && t.highway !== 'construction' && t.highway !== 'proposed' && t.area !== 'yes') {
-      const drive = DRIVE.has(t.highway) && t.access !== 'private' && t.access !== 'no';
+      // Access restrictions may be recorded at the vehicle or motorcar level,
+      // not only on the generic access tag. Never route cars through them.
+      const blocked = ['access','vehicle','motor_vehicle','motorcar'].some(key => ['no','private'].includes(t[key]));
+      const drive = DRIVE.has(t.highway) && !blocked;
+      const forwardOnly = ['yes','true','1'].includes(t.oneway) || (t.oneway == null && t.junction === 'roundabout');
+      const reverseOnly = t.oneway === '-1';
       const base = ['primary','secondary','trunk'].includes(t.highway) ? 10 : ['tertiary','residential'].includes(t.highway) ? 7 : drive ? 5 : 2.2;
       const width = clamp(finite(parseFloat(t.width), base), 1.5, 22);
       const road = { id: e.id, points, width, drive, name: t['name:uk'] || t.name || 'Вулиця без назви', kind: t.highway };
@@ -61,7 +69,13 @@ export function parseMap(data) {
         if (drive) {
           const ak = e.nodes?.[i-1] != null ? String(e.nodes[i-1]) : `${a.x.toFixed(2)},${a.z.toFixed(2)}`;
           const bk = e.nodes?.[i] != null ? String(e.nodes[i]) : `${b.x.toFixed(2)},${b.z.toFixed(2)}`;
-          nodes.set(ak, { ...a, id: ak, name: road.name }); nodes.set(bk, { ...b, id: bk, name: road.name }); link(ak,bk); link(bk,ak);
+          nodes.set(ak, { ...a, id: ak, name: road.name }); nodes.set(bk, { ...b, id: bk, name: road.name });
+          link(ak,bk,connectivity); link(bk,ak,connectivity);
+          // A destination on a one-way road can have no outgoing edges.
+          if (!graph.has(ak)) graph.set(ak, []);
+          if (!graph.has(bk)) graph.set(bk, []);
+          if (!reverseOnly) link(ak,bk);
+          if (!forwardOnly) link(bk,ak);
         }
       }
     } else if (t.building && t.building !== 'no' && points.length >= 4) {
@@ -80,7 +94,7 @@ export function parseMap(data) {
   for (const id of nodes.keys()) {
     if (seen.has(id)) continue;
     const stack = [id], group = []; seen.add(id);
-    while (stack.length) { const key = stack.pop(); group.push(key); for (const n of graph.get(key) || []) if (!seen.has(n)) { seen.add(n); stack.push(n); } }
+    while (stack.length) { const key = stack.pop(); group.push(key); for (const n of connectivity.get(key) || []) if (!seen.has(n)) { seen.add(n); stack.push(n); } }
     if (group.length > component.length) component = group;
   }
   const ids = new Set(component), all = component.map(id=>nodes.get(id));
@@ -150,8 +164,15 @@ export function findRoute(world, start, goal) {
 }
 export function chooseMission(world, position, index) {
   const start = nearestNode(world,position), rng = seeded(index*2347+81);
-  let candidates = world.component.filter(id => { const d=distance(world.nodes.get(id),position);return d>260&&d<1000; });
-  if (!candidates.length) candidates = world.component.filter(id=>id!==start);
+  // A weakly connected road network can contain unreachable destinations when
+  // one-way streets are present. Only offer missions with a legal driving route.
+  const reachable = new Set([start]), queue = [start];
+  for (let i=0;i<queue.length;i++) for (const id of world.graph.get(queue[i]) || []) {
+    if (!reachable.has(id) && world.nodes.has(id)) { reachable.add(id); queue.push(id); }
+  }
+  let candidates = queue.filter(id => { const d=distance(world.nodes.get(id),position);return d>260&&d<1000; });
+  if (!candidates.length) candidates = queue.filter(id=>id!==start);
+  if (!candidates.length) return {route:[world.nodes.get(start)],target:world.nodes.get(start),length:0,reward:0,limit:70};
   const end = candidates[Math.floor(rng()*candidates.length)];
   const route = findRoute(world,start,end); const length = route.reduce((sum,p,i)=>sum+(i?distance(p,route[i-1]):0),0);
   return { route, target: world.nodes.get(end), length, reward: Math.round(180+length*.2), limit: Math.max(70,length/7+35) };

@@ -1,5 +1,11 @@
 # Game
 
+## Version 0.4.10 — Legal OSM driving directions
+
+- Driving navigation now honours OSM `oneway=yes`, `oneway=-1` and roundabout directionality (with an explicit `oneway=no` override). Streets marked `access`, `vehicle`, `motor_vehicle` or `motorcar` as private/prohibited are excluded from car routing.
+- Mission destinations are selected only among nodes reachable along permitted directions; the largest mapped road component still uses physical (undirected) connectivity. Traffic safely stops at a one-way dead end instead of receiving an invalid next node.
+- Added regression tests for routing direction, access restrictions, graph connectivity and reachable missions; updated the offline PWA version.
+
 ## Version 0.4.9 — Reliable stamina and sprint exhaustion
 
 - Sustained running now enters an exhausted state when stamina reaches zero. Sprint stays disabled until stamina recovers to 30%, preventing rapid speed flicker while the run button is held.

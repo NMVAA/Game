@@ -111,3 +111,38 @@ test('A* navigates a 4096-junction city graph without losing shortest paths',()=
   assert.equal(route.at(-1).id,`${side-1},${side-1}`);
   for(let i=1;i<route.length;i++)assert.equal(Math.abs(route[i].x-route[i-1].x)+Math.abs(route[i].z-route[i-1].z),1);
 });
+
+test('driving graph respects OSM one-way streets, roundabouts and explicit two-way overrides',()=>{
+  const data=fixture();
+  data.elements.find(e=>e.id===200).tags.oneway='yes';       // 1 -> 2
+  data.elements.find(e=>e.id===201).tags.oneway='-1';        // 9 -> 8
+  data.elements.find(e=>e.id===202).tags.junction='roundabout'; // 15 -> 16
+  data.elements.find(e=>e.id===203).tags={highway:'residential',junction:'roundabout',oneway:'no'};
+  const w=parseMap(data);
+  assert.equal(w.component.length,49,'one-way streets must not fragment connected city geometry');
+  assert.ok(w.graph.get('1').includes('2'));
+  assert.ok(!w.graph.get('2').includes('1'));
+  assert.ok(w.graph.get('9').includes('8'));
+  assert.ok(!w.graph.get('8').includes('9'));
+  assert.ok(w.graph.get('15').includes('16'));
+  assert.ok(!w.graph.get('16').includes('15'));
+  assert.ok(w.graph.get('22').includes('23') && w.graph.get('23').includes('22'));
+  for (let i=1;i<49;i++){
+    const source=String(i),mission=chooseMission(w,w.nodes.get(source),i);
+    assert.ok(mission.route.length>0,`no route from ${source}`);
+    assert.equal(mission.route[0].id,source);
+    assert.equal(mission.route.at(-1).id,mission.target.id,'mission must have a reachable goal');
+    for(let j=1;j<mission.route.length;j++)
+      assert.ok(w.graph.get(mission.route[j-1].id).includes(mission.route[j].id),'mission followed the wrong way');
+  }
+});
+test('private and motor-vehicle-prohibited streets are excluded from driving routes',()=>{
+  for(const [key,value] of [['access','private'],['vehicle','no'],['motor_vehicle','private'],['motorcar','no']]){
+    const data=fixture();
+    data.elements.find(e=>e.id===200).tags[key]=value;
+    const w=parseMap(data);
+    assert.equal(w.roads.find(r=>r.id===200).drive,false,`${key}=${value} must not allow driving`);
+    assert.ok(!w.graph.get('1').includes('2'),`${key}=${value}: restricted link was routed`);
+    assert.ok(w.component.length>=40,'remaining public network should stay available');
+  }
+});

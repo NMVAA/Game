@@ -103,7 +103,9 @@ function tickTraffic(dt){for(const v of traffic){const a=world.nodes.get(v.a),b=
     if(v.ready&&distance(v.car.group.position,state)<9)speed=0;
     for(const other of traffic)if(other!==v&&v.ready&&other.ready&&distance(v.car.group.position,other.car.group.position)<5)speed=0;
     v.t+=speed*dt/Math.max(1,len);
-    if(v.t>=1){const opts=(world.graph.get(v.b)||[]).filter(id=>id!==v.a);const next=(opts.length?opts:world.graph.get(v.b))[Math.floor(rng()*(opts.length||1))];v.a=v.b;v.b=next;v.t=0;continue;}
+    if(v.t>=1){const outgoing=world.graph.get(v.b)||[],opts=outgoing.filter(id=>id!==v.a),choices=opts.length?opts:outgoing;
+      if(!choices.length){v.t=1;v.speed=0;continue;} // End of a one-way street: park safely, never follow an invalid edge.
+      const next=choices[Math.floor(rng()*choices.length)];v.a=v.b;v.b=next;v.t=0;continue;}
     const dx=(b.x-a.x)/Math.max(len,1),dz=(b.z-a.z)/Math.max(len,1),desired=Math.atan2(dx,dz);const diff=Math.atan2(Math.sin(desired-v.angle),Math.cos(desired-v.angle));v.angle=v.ready?v.angle+diff*Math.min(1,dt*7):desired;
     v.car.group.position.set(lerp(a.x,b.x,v.t)-dz*1.5,0,lerp(a.z,b.z,v.t)+dx*1.5);v.car.group.rotation.y=v.angle;v.car.update(speed,0,dt,speed===0);v.ready=true;
   }}
