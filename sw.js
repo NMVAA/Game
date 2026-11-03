@@ -1,6 +1,6 @@
 // Versioned PWA cache. No remote libraries or API calls required.
-const CACHE='football-life-v1';
-const CORE=['./','./index.html','./styles.css','./ui.js','./engine.js','./data.js','./manifest.webmanifest','./icon.svg'];
+const CACHE='football-life-v2';
+const CORE=['./','./index.html','./styles.css','./ui.js','./engine.js','./story.js','./data.js','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));
 });
