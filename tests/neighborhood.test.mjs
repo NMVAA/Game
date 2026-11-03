@@ -101,3 +101,16 @@ test('courtyard spawn stays near the address with distant but collision-free roa
   assert.equal(collisionAt(world,spawn.walker,.44),null);
   assert.equal(collisionAt(world,spawn.car,2),null);
 });
+
+test('walking turn cues match camera yaw and look ahead along the current street',()=>{
+  // Positive yaw turns right (+X); negative yaw turns left (-X).
+  assert.equal(routeProgress([{x:0,z:0},{x:30,z:0}],{x:0,z:0},0).hint,'Поверни праворуч');
+  assert.equal(routeProgress([{x:0,z:0},{x:-30,z:0}],{x:0,z:0},0).hint,'Поверни ліворуч');
+  const corner=[{x:0,z:0},{x:0,z:20},{x:-30,z:20}];
+  assert.equal(routeProgress(corner,{x:0,z:2},0).hint,'Продовжуй прямо','do not steer towards the next street too early');
+  assert.equal(routeProgress(corner,{x:0,z:19},0).hint,'Поверни ліворуч','announce the next turn when approaching the corner');
+  assert.equal(routeProgress(corner,{x:0,z:19},-Math.PI/2).hint,'Продовжуй прямо','west-facing player is already following the next street');
+  const end=routeProgress(corner,corner.at(-1),-Math.PI/2);
+  assert.equal(end.remaining,0);
+  assert.equal(end.progress,1);
+});
