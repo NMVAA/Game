@@ -1,6 +1,6 @@
 // Every release changes VERSION. Only this application's caches are removed.
-const VERSION='0.4.11',PREFIX='game:'+new URL(self.registration.scope).pathname+':',CACHE=PREFIX+VERSION;
-const CORE=['./','./index.html','./src/ui.css','./src/core.mjs','./src/world.mjs','./src/game.mjs','./src/walking.mjs','./src/neighborhood.mjs','./src/neighborhood-scene.mjs','./vendor/three.module.js','./map/pokrov.json','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
+const VERSION='0.5.0',PREFIX='game:'+new URL(self.registration.scope).pathname+':',CACHE=PREFIX+VERSION;
+const CORE=['./','./index.html','./src/ui.css','./src/core.mjs','./src/world.mjs','./src/game.mjs','./src/walking.mjs','./src/neighborhood.mjs','./src/neighborhood-scene.mjs','./src/landscape.mjs','./src/local-layout.mjs','./src/local-scene.mjs','./vendor/three.module.js','./map/pokrov.json','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(CACHE);await cache.addAll(CORE.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})));await self.skipWaiting();})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if((key.startsWith(PREFIX)&&key!==CACHE)||key==='pokrov-3d-v1')await caches.delete(key);await self.clients.claim();})()));
 self.addEventListener('fetch',event=>{
