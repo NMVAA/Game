@@ -11,6 +11,7 @@ import {CONTACT_BY_ID} from './data.js';
 import {PLOT_LIBRARY,PLOT_PHASES} from './plot-stories.js';
 import {queueArc,remember,currentPartnerId,storyDay,initMemory} from './memory.js';
 import {initNpcWorld} from './npc.js';
+import {previewRpgCheck,resolveRpgCheck} from './rpg.js';
 
 const clamp=(x,low=0,high=100)=>Math.max(low,Math.min(high,x));
 const byId=Object.fromEntries(PLOT_LIBRARY.map(plot=>[plot.id,plot]));
@@ -77,13 +78,19 @@ export function plotScene(g,item){
  if(!beat)return null;
  const choiceBefore=thread.path[stage-1];
  const text=Array.isArray(beat.text)?beat.text[choiceBefore===1?1:0]:beat.text;
+ const challengeLeft=previewRpgCheck(g,thread.key,stage,0);
+ const challengeRight=previewRpgCheck(g,thread.key,stage,1);
  const base={
   id:'plot-'+thread.key+'-'+stage,
   tag:'СЮЖЕТ · '+def.name,
   title:beat.title,
   text:renderText(text,thread,g),
-  a:{label:beat.left.label,sub:beat.left.sub,id:'plot:'+threadId+':'+stage+':0'},
-  b:{label:beat.right.label,sub:beat.right.sub,id:'plot:'+threadId+':'+stage+':1'},
+  a:{label:beat.left.label,
+   sub:beat.left.sub+(challengeLeft?' · '+challengeLeft.attributeName+' '+challengeLeft.odds+'%':''),
+   id:'plot:'+threadId+':'+stage+':0'},
+  b:{label:beat.right.label,
+   sub:beat.right.sub+(challengeRight?' · '+challengeRight.attributeName+' '+challengeRight.odds+'%':''),
+   id:'plot:'+threadId+':'+stage+':1'},
   art:beat.art||def.art,
   major:stage===4||stage===6,
   plot:{
@@ -165,8 +172,20 @@ export function resolvePlotChoice(g,id){
  const beat=def.beats[step],chosen=side===0?beat.left:beat.right;
  if(!chosen)return {ok:false,message:'Варіант недоступний.'};
  applyEffects(g,t,chosen.effects,step,side);
+ const check=resolveRpgCheck(g,t.key,step,side);
+ if(check){
+   if(check.success){
+     t.support=clamp(t.support+12,0,200);
+     t.evidence=clamp(t.evidence+6,0,200);
+     g.morale=clamp(g.morale+3);
+   }else{
+     t.heat=clamp(t.heat+12,0,200);
+     g.stress=clamp(g.stress+4);
+   }
+ }
  t.path.push(side);
- const outcome=renderText(chosen.message,t,g);
+ const outcome=renderText(chosen.message,t,g)+
+  (check?(check.success?' Перевірка '+check.attributeName+' успішна: тебе почули.':' Перевірка '+check.attributeName+' провалена: довіру ще треба заслужити.'):'');
  t.history.unshift({day:storyDay(g),stage:step+1,phase:PLOT_PHASES[step],
    decision:chosen.label,outcome});
  t.history=t.history.slice(0,24);
@@ -192,7 +211,7 @@ export function resolvePlotChoice(g,id){
   // Two unrelated stories can share the same theme, but the individual past
   // decisions and verdicts remain attached to their named plot.
  }
- return {ok:true,message:outcome,plot:{
+ return {ok:true,message:outcome,check,plot:{
   name:t.name,chapter:step+1,total:7,ending:t.ending
  }};
 }
