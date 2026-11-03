@@ -181,10 +181,10 @@ export function startNearHouse59(world,tour){
 
 export function routeProgress(route,position,heading=0){
   if(!route?.length)return {remaining:0,progress:0,hint:'Маршрут не завантажено',offRoute:true};
-  let closest={distance:Infinity,index:1,t:0};
+  let closest={distance:Infinity,index:1,t:0,x:route[0].x,z:route[0].z};
   for(let i=1;i<route.length;i++){
     const p=nearestPoint(position,route[i-1],route[i]);
-    if(p.distance<closest.distance)closest={distance:p.distance,index:i,t:p.t};
+    if(p.distance<closest.distance)closest={distance:p.distance,index:i,t:p.t,x:p.x,z:p.z};
   }
   let remaining=0,total=0;
   for(let i=1;i<route.length;i++){
@@ -192,9 +192,22 @@ export function routeProgress(route,position,heading=0){
     if(i===closest.index)remaining+=d*(1-closest.t);
     else if(i>closest.index)remaining+=d;
   }
-  const aim=route[Math.min(route.length-1,closest.index+1)]||route.at(-1);
+  // Aim eight metres ahead *along the mapped route*. Looking one whole
+  // waypoint past the current street can give a wrong turn at long segments.
+  let aim=route[closest.index]||route.at(-1);
+  let anchor={x:closest.x,z:closest.z},ahead=8;
+  for(let i=closest.index;i<route.length;i++){
+    const next=route[i],length=distance(anchor,next);
+    if(length>=ahead&&length>0){
+      const t=ahead/length;
+      aim={x:anchor.x+(next.x-anchor.x)*t,z:anchor.z+(next.z-anchor.z)*t};
+      break;
+    }
+    ahead-=length;aim=next;anchor=next;
+  }
   const angle=Math.atan2(aim.x-position.x,aim.z-position.z)-heading;
   const relative=Math.atan2(Math.sin(angle),Math.cos(angle));
-  const hint=closest.distance>35?'Повернись до маршруту':Math.abs(relative)>2.3?'Розвернися':relative>.50?'Поверни ліворуч':relative<-.50?'Поверни праворуч':'Продовжуй прямо';
+  // Positive yaw points towards +X (right) in this world's coordinate system.
+  const hint=closest.distance>35?'Повернись до маршруту':Math.abs(relative)>2.3?'Розвернися':relative>.50?'Поверни праворуч':relative<-.50?'Поверни ліворуч':'Продовжуй прямо';
   return {remaining,progress:clamp(total?(total-remaining)/total:1,0,1),offRoute:closest.distance>35,nearestDistance:closest.distance,hint};
 }
