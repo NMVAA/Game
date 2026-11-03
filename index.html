@@ -1,27 +1,18 @@
 <!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#091511">
-  <meta name="description" content="Football Life — інтерактивна 2D-кар'єра футболіста: два рішення, пов'язані наслідки та особисте життя 21+.">
+  <meta name="theme-color" content="#08130e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Football Life">
-  <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=2.0.0">
-  <title>Football Life · Твій вибір</title>
+  <meta name="description" content="Football Life — мобільна кар'єра футболіста з двома рішеннями та глибокими наслідками.">
+  <link rel="icon" href="/Game/icon.svg" type="image/svg+xml">
+  <title>Football Life — Твої рішення</title>
 </head>
 <body>
-  <div id="app"><main class="content"><p>Завантажуємо Football Life…</p></main></div>
-  <script type="module" src="./ui.js?v=2.0.0"></script>
-  <script>
-    if ('serviceWorker' in navigator && window.isSecureContext) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'}).catch(console.warn);
-      });
-    }
-  </script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
