@@ -1,5 +1,5 @@
 /** Deterministic game logic; no browser or Three.js dependency. Metres and seconds. */
-export const VERSION = '0.4.2';
+export const VERSION = '0.4.3';
 export const ORIGIN = [47.653, 34.094];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const finite = (v, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
@@ -99,16 +99,52 @@ export function closestRoad(world, p, radius = 70) {
   return best;
 }
 export function nearestNode(world,p) { let best, d = Infinity; for (const id of world.component) { const v = world.nodes.get(id), n = distance(v,p); if (n < d) { best = id; d = n; } } return best; }
+/** Heap-backed A* avoids scanning all frontier intersections every step. */
+function routePush(heap, entry) {
+  let i = heap.length; heap.push(entry);
+  while (i) {
+    const parent = (i - 1) >> 1;
+    if (heap[parent].f <= entry.f) break;
+    heap[i] = heap[parent]; i = parent;
+  }
+  heap[i] = entry;
+}
+function routePop(heap) {
+  const first = heap[0], last = heap.pop();
+  if (!heap.length) return first;
+  let i = 0;
+  while (i * 2 + 1 < heap.length) {
+    let child = i * 2 + 1;
+    if (child + 1 < heap.length && heap[child + 1].f < heap[child].f) child++;
+    if (last.f <= heap[child].f) break;
+    heap[i] = heap[child]; i = child;
+  }
+  heap[i] = last;
+  return first;
+}
 export function findRoute(world, start, goal) {
-  if (start === goal) return [world.nodes.get(start)];
-  const open = new Set([start]), cost = new Map([[start,0]]), came = new Map();
-  const end = world.nodes.get(goal); if (!end || !world.nodes.has(start)) return [];
-  while (open.size) {
-    let cur, score = Infinity;
-    for (const id of open) { const f = cost.get(id) + distance(world.nodes.get(id),end); if (f < score) { score=f;cur=id; } }
-    if (cur === goal) { const path = [cur]; while (came.has(cur)) { cur=came.get(cur);path.push(cur); } return path.reverse().map(id=>world.nodes.get(id)); }
-    open.delete(cur);
-    for (const n of world.graph.get(cur) || []) { const c = cost.get(cur)+distance(world.nodes.get(cur),world.nodes.get(n)); if (c < (cost.get(n) ?? Infinity)) { cost.set(n,c);came.set(n,cur);open.add(n); } }
+  const source = world.nodes.get(start), end = world.nodes.get(goal);
+  if (!source || !end) return [];
+  if (start === goal) return [source];
+  const open = [], cost = new Map([[start, 0]]), came = new Map();
+  routePush(open, { id: start, g: 0, f: distance(source, end) });
+  while (open.length) {
+    const current = routePop(open);
+    if (current.g > cost.get(current.id)) continue; // stale heap entry
+    if (current.id === goal) {
+      const path = [goal];
+      while (came.has(path.at(-1))) path.push(came.get(path.at(-1)));
+      return path.reverse().map(id => world.nodes.get(id));
+    }
+    const here = world.nodes.get(current.id);
+    for (const id of world.graph.get(current.id) || []) {
+      const next = world.nodes.get(id);
+      if (!next) continue;
+      const g = current.g + distance(here, next);
+      if (g >= (cost.get(id) ?? Infinity)) continue;
+      cost.set(id, g); came.set(id, current.id);
+      routePush(open, { id, g, f: g + distance(next, end) });
+    }
   }
   return [];
 }

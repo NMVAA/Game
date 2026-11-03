@@ -2,6 +2,12 @@
 
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
+## Version 0.4.3 — Faster street-network navigation
+
+- Replaced the linear-scan A* frontier for driving routes with a binary min-heap. Large OSM road graphs require fewer operations during trip planning and rerouting, improving mobile responsiveness.
+- Added shortest-path, unreachable-junction and 4,096-node grid regression tests.
+- Updated browser version and offline PWA cache so existing installations can pick up the change.
+
 ## Version 0.4.2 — Safe courtyard start and quick vehicle return
 
 - The walking tour keeps its collision-free start near Centralna 59 even when a car cannot park within normal boarding distance.

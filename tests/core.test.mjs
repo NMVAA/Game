@@ -49,3 +49,31 @@ test('sprint, stamina, jump and parked vehicle collision',()=>{
   const car={x:w.x+5,z:w.z,angle:0},near=createWalker();assert.ok(placeWalker(near,car,world));
   const blocked=createWalker({x:0,z:0});for(let i=0;i<500;i++)stepWalker(blocked,{forward:1},1/60,world,{x:0,z:5});assert.ok(blocked.z<3.1);
 });
+
+test('A* chooses shortest roads over fewer junctions and handles missing or unreachable points',()=>{
+  const values=[['start',0,0],['a',4,0],['b',8,0],['end',12,0],['detour',6,8]];
+  const nodes=new Map(values.map(([id,x,z])=>[id,{id,x,z}]));
+  const graph=new Map([['start',['detour','a']],['a',['b']],['b',['end']],['detour',['end']],['end',[]]]);
+  assert.deepEqual(findRoute({nodes,graph},'start','end').map(p=>p.id),['start','a','b','end']);
+  assert.deepEqual(findRoute({nodes,graph},'a','a').map(p=>p.id),['a']);
+  assert.deepEqual(findRoute({nodes,graph},'missing','end'),[]);
+  assert.deepEqual(findRoute({nodes,graph},'start','missing'),[]);
+  assert.deepEqual(findRoute({nodes,graph},'end','start'),[]);
+});
+test('A* navigates a 4096-junction city graph without losing shortest paths',()=>{
+  const side=64,nodes=new Map(),graph=new Map();
+  for(let z=0;z<side;z++)for(let x=0;x<side;x++){
+    const id=`${x},${z}`,neighbors=[];
+    nodes.set(id,{id,x,z});
+    if(x>0)neighbors.push(`${x-1},${z}`);
+    if(z>0)neighbors.push(`${x},${z-1}`);
+    if(x<side-1)neighbors.push(`${x+1},${z}`);
+    if(z<side-1)neighbors.push(`${x},${z+1}`);
+    graph.set(id,neighbors);
+  }
+  const route=findRoute({nodes,graph},'0,0',`${side-1},${side-1}`);
+  assert.equal(route.length,side*2-1);
+  assert.equal(route[0].id,'0,0');
+  assert.equal(route.at(-1).id,`${side-1},${side-1}`);
+  for(let i=1;i<route.length;i++)assert.equal(Math.abs(route[i].x-route[i-1].x)+Math.abs(route[i].z-route[i-1].z),1);
+});
