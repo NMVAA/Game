@@ -19,6 +19,7 @@ with tempfile.TemporaryDirectory() as folder:
             landscape=page.evaluate('window.__GAME_TEST__.landscape')
             assert landscape and landscape['interpretive'] and landscape['roofCount']>=data['buildings'],landscape
             assert landscape['treeCount']>30,landscape
+            assert landscape['visualBuildings']>=3 and landscape['windows']>10,landscape
             tour=page.evaluate('window.__GAME_TEST__.tour')
             assert tour and tour['points']>=3 and tour['startOffset']<=240 and tour['endOffset']<=250,tour
             assert tour['spawnDistance']<=55,tour
