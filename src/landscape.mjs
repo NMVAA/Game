@@ -7,7 +7,7 @@
  * land-ownership assertion or surveyed tree database. Building and street
  * footprints remain supplied by the separately attributed OSM dataset.
  */
-import {project,seeded,inside,closestRoad,collisionAt} from './core.mjs';
+import {project,seeded,inside,nearestPoint,collisionAt} from './core.mjs';
 
 export const LANDSCAPE_STUDY=Object.freeze({
   source:'User-supplied satellite visual reference, interpreted geometry',
@@ -28,10 +28,11 @@ export function visualLandcoverSites(world,options={}) {
   const trees=[],shrubs=[];
   const polygons=(world.parks||[]).filter(poly=>poly.length>=3);
   const withinMap=p=>p.x>world.bounds.minX+5&&p.x<world.bounds.maxX-5&&p.z>world.bounds.minZ+5&&p.z<world.bounds.maxZ-5;
-  const free=(p,r)=>withinMap(p)&&!collisionAt(world,p,r)&&(()=>{
-    const road=closestRoad(world,p,15);
-    return !road||road.distance>road.road.width*.5+r+1.3;
-  })();
+  // Keep *all* OSM corridors free, including narrow paths that cars cannot
+  // drive on. They are especially important for the school walking route.
+  const free=(p,r)=>withinMap(p)&&!collisionAt(world,p,r)&&
+    !(world.roadGrid.near(p.x,p.z,15).some(segment=>
+      nearestPoint(p,segment.a,segment.b).distance<=segment.road.width*.5+r+1.3));
   // A low-budget staggered grid avoids grass-like randomness and makes the
   // vegetation clump into believable blocks at phone-friendly draw counts.
   for(let z=c.z-k.northSouthRadiusM*1.14;z<=c.z+k.northSouthRadiusM*1.14;z+=10.6) {
