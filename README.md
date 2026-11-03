@@ -10,16 +10,17 @@ Create a 21-year-old professional footballer. Play decisions in a compact 2D top
 
 **Personal life is 21+**: all romantic characters are explicitly adult, and the game includes dating, living together, commitment, marriage, breakups, nightlife, and repercussions on a football career. **There are no children.** No explicit sexual imagery.
 
-## Features in initial build
+## Версія 2.0 — Life Choices
 
-- Mobile-first UI, five bottom navigation tabs, phone-sized touch targets and safe areas.
-- Fictional eight-club football universe with double round-robin seasons, standings and player statistics.
-- Active 2D match screen: pass, dribble, shoot and press, each with a different probabilistic effect; plus quick simulation.
-- Daily schedule and training with condition, morale, stress and form.
-- Club contracts, salaries, bonuses, agent counteroffers, accept/reject and transfer consequences.
-- Four adult characters with relationships, trust, dates and transitions to living together and marriage.
-- Purchases and leisure spending affect personal reputation, finances and condition.
-- Persistent game stored locally with versioned PWA offline shell; no external API is needed.
+Гра тепер працює як єдиний потік ситуацій із **двома рішеннями**. Гравець свайпає ліворуч або праворуч чи натискає на одну з двох карток; після вибору сюжет одразу просувається. Нижньої панелі вкладок немає. Інтерфейс займає всю доступну висоту мобільного екрана.
+
+Симулятор зберігає рішення, довіру партнера, клубу й агента, приватність, публічну репутацію, ризики скандалів, зарплату, форму, стрес і особисті кошти. Вибори запускають **відкладені події**, зокрема витік переговорів, конфлікти після трансферу, обговорення публічної поведінки, лікарські рекомендації, інвестиційні наслідки та особисті кризи.
+
+Усі романтичні персонажі 21+. Стосунки, ревнощі, доросла близькість за взаємною згодою, шлюб, розриви та нічне життя впливають на кар'єру. Сексуальна близькість описується без відвертих деталей. Дітей немає.
+
+Звичайні ситуаційні описи обмежені двадцятьма словами, а виняткові значущі сцени — ста словами. Після кожного рішення відбувається автоматичний перехід до наступної картки. Історію та наслідки можна відкрити з журналу у верхній частині екрана.
+
+У грі вигадані клуби, професіональні футболісти, матчеві рішення та контрактні переговори. Прогрес зберігається у localStorage. Під час переходу з попереднього інтерфейсу збережений прогрес футболіста зберігається.
 
 ## Tech
 
@@ -33,4 +34,4 @@ This is an initial playable original game prototype, not FIFA software and not a
 
 ## Controls
 
-Tap navigation tabs, daily actions, match actions and transfer choices. Progress saves automatically to localStorage. Clearing browser site data will erase your save. Previous Pokrov-game saves are left untouched by the new save key.
+Swipe left/right or tap one of two choices; the story advances automatically. Progress saves automatically to localStorage. Clearing browser site data will erase your save. Previous Pokrov-game saves are left untouched by the new save key.
