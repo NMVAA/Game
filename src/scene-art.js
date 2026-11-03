@@ -49,7 +49,7 @@ const fallback={
   media:'press',night:'nightlife'
 };
 export function artForScene(scene,kind='stadium'){
-  return imageByScene[scene?.id] || fallback[kind] || 'stadium_tunnel';
+  return scene?.art || imageByScene[scene?.id] || fallback[kind] || 'stadium_tunnel';
 }
 export function artUrl(name){
   return import.meta.env.BASE_URL+'art/'+name+'.webp';
