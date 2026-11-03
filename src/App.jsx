@@ -3,13 +3,17 @@ import {AnimatePresence,animate,motion,useMotionValue,useTransform} from 'motion
 import {CLUBS,CLUB_BY_ID,POSITIONS,formatCash} from '../data.js';
 import {loadGame,saveGame,gameClock,scorePlayer} from '../engine.js';
 import {ensureStory,getScene,makeCareer,takeChoice} from '../story.js';
+import {memorySummary} from '../memory.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
 const kinds={
  training:'stadium','training-rest':'stadium',match:'stadium',waiting:'stadium',captain:'stadium',coach:'stadium',mentor:'stadium',rehab:'stadium',
  offer:'contract',agentDeal:'contract',agentLeak:'contract',sponsor:'contract',sponsorIntro:'contract',investment:'contract',move:'contract',
  meet:'romance',date:'romance',intimacy:'romance',travel:'romance',jealousy:'romance',fight:'romance',commit:'romance',moveIn:'romance',wedding:'romance',partnerDoubt:'romance',secret:'romance',affairExposure:'romance',
- photo:'media',public:'media',publicity:'media',interview:'media',sponsorThreat:'media',nightlife:'night',recovery:'night'
+ photo:'media',public:'media',publicity:'media',interview:'media',sponsorThreat:'media',nightlife:'night',recovery:'night',
+ memoryBoard:'contract',memoryEvidence:'media',memoryAgent:'contract',memoryPromise:'romance',memorySelection:'stadium',
+ memoryTeam:'stadium',memoryRelationship:'romance',rememberedHurt:'romance',memoryRelocation:'romance',
+ memoryOpportunity:'stadium',agentFreeze:'contract'
 };
 const palettes={
  stadium:['#193d31','#b8f56d','#0e271d'],
@@ -96,11 +100,22 @@ function Meter({label,value,warn}){
  return <div className="meter"><div><small>{label}</small><b>{Math.round(clamp(value))}%</b></div><i><em style={{width:clamp(value)+'%',background:warn?'#f5a48f':'#b8f56d'}}/></i></div>;
 }
 function Journal({game,onClose}){
- const s=ensureStory(game);
+ const s=ensureStory(game),mem=memorySummary(game);
  return <motion.div className="journal-overlay" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}>
   <motion.section className="journal-panel" role="dialog" aria-modal="true" aria-label="Історія та наслідки" initial={{y:85}} animate={{y:0}} exit={{y:85}} transition={{type:'spring',stiffness:300,damping:28}} onClick={e=>e.stopPropagation()}>
     <div className="journal-title"><div><small>FOOTBALL LIFE</small><h2>Твої наслідки</h2></div><button type="button" onClick={onClose}>✕</button></div>
     <div className="journal-stats"><span>Рейтинг <b>{scorePlayer(game)}</b></span><span>Клуб <b>{Math.round(s.clubTrust)}%</b></span><span>Агент <b>{Math.round(s.agentTrust)}%</b></span><span>Скандали <b>{Math.round(s.scandal)}%</b></span></div>
+    <details className="memory-details" open><summary>ПАМ’ЯТЬ ПЕРСОНАЖІВ <span>{mem.promises.length} обіцянок · {mem.consequences} майбутніх наслідків</span></summary>
+      <div className="memory-actors">
+      {mem.actors.filter(a=>a.id==='coach'||a.id==='agent'||a.id==='captain'||a.id.startsWith('partner:')).map(a=>
+        <div className="memory-actor" key={a.id}>
+          <div><b>{a.label}</b><span>Довіра {a.trust}% · Образа {a.resentment}%</span></div>
+          <p>{a.last}</p>
+        </div>)}
+      </div>
+      {mem.promises.length>0&&<div className="memory-promises"><strong>НЕВИКОНАНІ ОБІЦЯНКИ</strong>{mem.promises.map(p=><p key={p.id}>{p.label}: {p.text}</p>)}</div>}
+      <div className="memory-access"><span>Тренер: {mem.access.selection}</span><span>Агент: {mem.access.agentStatus}</span></div>
+    </details>
     <div className="journal-scroll">{s.journal?.length?s.journal.map((entry,i)=><article key={i}><small>{entry.day}</small><b>{entry.choice}</b><p>{entry.outcome}</p></article>):<p>Перше рішення ще попереду.</p>}</div>
     <p className="journal-note">Рішення можуть мати наслідки через кілька ігрових днів. Усі романтичні персонажі — дорослі 21+.</p>
   </motion.section>
@@ -119,7 +134,10 @@ function SwipeCard({scene,onChoice}){
   lock.current=true;
   navigator.vibrate?.(15);
   const distance=side===0?-Math.max(window.innerWidth,450):Math.max(window.innerWidth,450);
-  animate(x,distance,{duration:.22,ease:'easeIn'}).then(()=>onChoice(side));
+  animate(x,distance,{duration:.22,ease:'easeIn'}).then(()=>{
+    const accepted=onChoice(side);
+    if(accepted===false)animate(x,0,{type:'spring',stiffness:400,damping:32}).then(()=>{lock.current=false;});
+  });
  },[x,onChoice]);
  const endDrag=(_event,info)=>{
   if(info.offset.x< -98||info.velocity.x< -720)choose(0);
@@ -164,18 +182,23 @@ export default function App(){
  const [journal,setJournal]=useState(false);
  const [notice,setNotice]=useState('');
  const timeout=useRef(null);
+ const lastChoice=useRef(0);
  const scene=useMemo(()=>game?getScene(game):null,[game,revision]);
  const sceneKey=game&&scene?[game.season,game.week,game.day,game.story?.step,game.match?.turns||0,scene.id,revision].join('-'):'intro';
  const flash=useCallback(message=>{setNotice(message);clearTimeout(timeout.current);timeout.current=setTimeout(()=>setNotice(''),2100);},[]);
  const decide=useCallback(side=>{
-  if(!game||journal)return;
+  if(!game||journal)return false;
+  if(performance.now()-lastChoice.current<280)return false;
   try{
     const result=takeChoice(game,side);
     if(result.ok){
+     lastChoice.current=performance.now();
      saveGame(game);setGame({...game});setRevision(n=>n+1);
      flash(result.message||'Рішення прийнято.');
-    }else flash(result.message||'Зараз це рішення недоступне.');
-  }catch(error){console.error(error);flash('Не вдалося завершити вибір. Спробуй ще раз.');}
+     return true;
+    }
+    flash(result.message||'Зараз це рішення недоступне.');return false;
+  }catch(error){console.error(error);flash('Не вдалося завершити вибір. Спробуй ще раз.');return false;}
  },[game,journal,flash]);
  useEffect(()=>{
   const onKey=e=>{
