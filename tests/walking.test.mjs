@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createWalker,lookAround,placeWalker,stepWalker,EYE_HEIGHT,WALK_RADIUS} from '../src/walking.mjs';
+import {createWalker,lookAround,placeWalker,stepWalker,walkPadAxes,EYE_HEIGHT,WALK_RADIUS} from '../src/walking.mjs';
 import {SpatialGrid} from '../src/core.mjs';
 
 function world(){
@@ -13,6 +13,22 @@ const advance=(w,input,seconds,env=world(),vehicle=null)=>{
   const dt=1/60;
   for(let i=0;i<Math.ceil(seconds/dt);i++)stepWalker(w,input,dt,env,vehicle);
 };
+test('mobile walking stick ignores tiny touches and preserves diagonal speed',()=>{
+  const rect={left:100,top:200,width:140,height:140},cx=170,cy=270;
+  const neutral={strafe:0,forward:0,thumbX:0,thumbY:0};
+  assert.deepEqual(walkPadAxes(cx,cy,rect),neutral);
+  assert.deepEqual(walkPadAxes(cx+4,cy-2,rect),neutral,'touch jitter must not move the player');
+  const up=walkPadAxes(cx,cy-50,rect);
+  assert.ok(up.forward>.99 && Math.abs(up.strafe)<.00001,'top of pad should walk forward at full speed');
+  const down=walkPadAxes(cx,cy+50,rect);
+  assert.ok(down.forward<-.99,'bottom of pad should walk backward');
+  const half=walkPadAxes(cx+15,cy-15,rect);
+  assert.ok(half.forward>0 && half.strafe>0);
+  assert.ok(Math.hypot(half.forward,half.strafe)<1,'partial touches should not trigger full speed');
+  const diagonal=walkPadAxes(cx+50,cy-50,rect);
+  assert.ok(Math.abs(Math.hypot(diagonal.forward,diagonal.strafe)-1)<1e-9,'diagonal movement is normalized');
+  assert.equal(diagonal.thumbX,-diagonal.thumbY,'visual thumb matches the axes');
+});
 test('walking starts at human eye height with finite camera angles',()=>{
   const w=createWalker({x:12,z:-5,angle:.4});
   assert.equal(EYE_HEIGHT,1.68);assert.equal(w.x,12);assert.equal(w.z,-5);assert.equal(w.yaw,.4);

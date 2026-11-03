@@ -33,6 +33,11 @@ with tempfile.TemporaryDirectory() as folder:
             assert page.locator('#tourcard').is_visible()
             assert 'Ліцей №6' in page.locator('#tour-name').inner_text()
             stick=page.locator('#walkpad').bounding_box()
+            # A resting thumb at the centre must not make the player creep.
+            page.mouse.move(stick['x']+stick['width']*.5+3,stick['y']+stick['height']*.5+3)
+            page.mouse.down()
+            page.wait_for_timeout(600)
+            assert page.evaluate('window.__GAME_TEST__.walker.travel')<.05, 'walking stick drifted at centre'
             page.mouse.move(stick['x']+stick['width']*.5,stick['y']+stick['height']*.18)
             page.mouse.down()
             # Software-rendered WebGL can progress slower than wall-clock time.

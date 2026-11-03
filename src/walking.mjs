@@ -6,6 +6,17 @@ export function createWalker(spawn={x:0,z:0,angle:0}){
   return {x:finite(spawn.x),z:finite(spawn.z),yaw:finite(spawn.angle),pitch:0,
     vx:0,vz:0,speed:0,vertical:0,vy:0,jumpHeld:false,stamina:100,travel:0,stepPhase:0};
 }
+/** Convert thumb displacement into analog walking axes with a radial dead zone. */
+export function walkPadAxes(clientX,clientY,rect){
+  const half=Math.max(1,Math.min(rect.width,rect.height)*.34);
+  let x=(finite(clientX)-rect.left-rect.width/2)/half;
+  let y=(finite(clientY)-rect.top-rect.height/2)/half;
+  const length=Math.hypot(x,y),deadZone=.14;
+  if(length<=deadZone)return {strafe:0,forward:0,thumbX:0,thumbY:0};
+  const factor=(Math.min(length,1)-deadZone)/((1-deadZone)*length);
+  x*=factor;y*=factor;
+  return {strafe:x,forward:-y,thumbX:Math.round(x*38),thumbY:Math.round(y*38)};
+}
 export function lookAround(w,dx,dy,sensitivity=.0034){
   w.yaw+=clamp(finite(dx),-250,250)*sensitivity;
   w.pitch=clamp(w.pitch-clamp(finite(dy),-250,250)*sensitivity,-1.28,1.28);

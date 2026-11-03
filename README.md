@@ -1,5 +1,11 @@
 # Game
 
+## Version 0.4.8 — More precise touch walking controls
+
+- Added a 14% radial dead zone to the first-person walking thumbstick, preventing slow drift when a finger rests near the centre; analog movement is smoothly rescaled to full speed at the rim.
+- The steering and walking pads now retain their original active touch, so a second finger cannot unexpectedly seize control during multi-touch play.
+- Unit tests cover neutral input, gradual movement, backwards walking and normalized diagonal speed. Mobile Chromium checks that the thumbstick does not creep when held near its centre. Updated the offline PWA cache.
+
 ## Version 0.4.7 — Correct, anticipatory walking directions
 
 - Correct left/right turn prompts for the first-person camera coordinate system, so east/right no longer instructs a left turn.

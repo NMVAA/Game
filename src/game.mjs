@@ -1,6 +1,6 @@
 import {VERSION,clamp,lerp,finite,seeded,distance,nearestPoint,parseMap,closestRoad,nearestNode,findRoute,chooseMission,createState,spawnAt,stepVehicle,collisionAt} from './core.mjs';
 import {T,setupScene,buildWorld,makeCar,makeBeacon} from './world.mjs';
-import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker} from './walking.mjs';
+import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker,walkPadAxes} from './walking.mjs';
 import {buildNeighborhoodRoute,routeProgress,startNearHouse59} from './neighborhood.mjs';
 import {makeNeighborhoodOverlay} from './neighborhood-scene.mjs';
 const $=id=>document.getElementById(id), canvas=$('scene'), ui={speed:$('speed'),gear:$('gear'),fuel:$('fuel'),health:$('health'),funds:$('funds')};
@@ -24,7 +24,7 @@ function clearInput(){steerPointer=null;walkPointer=null;lookPointer=null;keys.c
 function pause(on){paused=on;clearInput();accumulator=0;if(started){$('menu').hidden=!on;$('hud').hidden=on;}if(on){save();garageUI();}if(audio)audio.gain.gain.setTargetAtTime(on?0:.035,audio.ctx.currentTime,.15);}
 let steerPointer=null;
 function steerAt(e){const r=$('steering').getBoundingClientRect();controls.steer=clamp((e.clientX-r.left-r.width/2)/(r.width*.34),-1,1);$('thumb').style.transform=`translateX(${controls.steer*38}px)`;$('steering').setAttribute('aria-valuenow',Math.round(controls.steer*100));}
-const steer=$('steering');steer.addEventListener('pointerdown',e=>{if(paused)return;e.preventDefault();steerPointer=e.pointerId;steer.setPointerCapture(e.pointerId);steerAt(e);});steer.addEventListener('pointermove',e=>{if(e.pointerId===steerPointer&&!paused){e.preventDefault();steerAt(e);}});
+const steer=$('steering');steer.addEventListener('pointerdown',e=>{if(paused||!inCar||steerPointer!==null)return;e.preventDefault();steerPointer=e.pointerId;steer.setPointerCapture(e.pointerId);steerAt(e);});steer.addEventListener('pointermove',e=>{if(e.pointerId===steerPointer&&!paused){e.preventDefault();steerAt(e);}});
 for(const event of ['pointerup','pointercancel','lostpointercapture'])steer.addEventListener(event,e=>{if(e.pointerId===steerPointer){steerPointer=null;controls.steer=0;$('thumb').style.transform='';steer.setAttribute('aria-valuenow','0');}});
 for(const el of document.querySelectorAll('button[data-control]')){
   el.addEventListener('pointerdown',e=>{if(paused)return;e.preventDefault();el.setPointerCapture(e.pointerId);held.set(e.pointerId,el.dataset.control);el.classList.add('held');});
@@ -33,8 +33,8 @@ for(const el of document.querySelectorAll('button[data-control]')){
 document.addEventListener('contextmenu',e=>{if(e.target.closest('[data-control],#scene,button'))e.preventDefault();});document.addEventListener('selectstart',e=>{if(e.target.closest('[data-control]'))e.preventDefault();});
 // True first-person look: drag the world with the right thumb or a mouse.
 const pad=$('walkpad');
-function moveWalkPad(e){const r=pad.getBoundingClientRect(),half=Math.min(r.width,r.height)*.34;let x=(e.clientX-r.left-r.width/2)/half,y=(e.clientY-r.top-r.height/2)/half;const length=Math.hypot(x,y);if(length>1){x/=length;y/=length;}walkAxis.strafe=x;walkAxis.forward=-y;$('walkthumb').style.transform='translate('+Math.round(x*38)+'px,'+Math.round(y*38)+'px)';}
-pad.addEventListener('pointerdown',e=>{if(paused||inCar)return;e.preventDefault();walkPointer=e.pointerId;pad.setPointerCapture(e.pointerId);moveWalkPad(e);});
+function moveWalkPad(e){const axes=walkPadAxes(e.clientX,e.clientY,pad.getBoundingClientRect());walkAxis.strafe=axes.strafe;walkAxis.forward=axes.forward;$('walkthumb').style.transform=`translate(${axes.thumbX}px,${axes.thumbY}px)`;}
+pad.addEventListener('pointerdown',e=>{if(paused||inCar||walkPointer!==null)return;e.preventDefault();walkPointer=e.pointerId;pad.setPointerCapture(e.pointerId);moveWalkPad(e);});
 pad.addEventListener('pointermove',e=>{if(e.pointerId===walkPointer&&!paused){e.preventDefault();moveWalkPad(e);}});
 for(const event of ['pointerup','pointercancel','lostpointercapture'])pad.addEventListener(event,e=>{if(e.pointerId===walkPointer){walkPointer=null;walkAxis.forward=walkAxis.strafe=0;$('walkthumb').style.transform='';}});
 canvas.addEventListener('pointerdown',e=>{if(paused||inCar||!started||lookPointer!==null)return;e.preventDefault();lookPointer=e.pointerId;lookLastX=e.clientX;lookLastY=e.clientY;canvas.setPointerCapture(e.pointerId);});
