@@ -1,6 +1,8 @@
 import {CLUBS,CLUB_BY_ID,CONTACTS,CONTACT_BY_ID,POSITIONS,TRAINING,formatCash} from './data.js';
 import {newGame,gameClock,scorePlayer,train,meet,relationshipAction,recover,negotiate,acceptOffer,rejectOffer,nextDay,beginMatch,matchAction} from './engine.js';
 import {initMemory,remember,memoryOf,currentPartnerId,makePromise,resolvePromise,queueArc,markArc,updateMemoryClock,careerAccess} from './memory.js';
+import {initNpcWorld,advanceNpcWorld} from './npc.js';
+import {npcScene,resolveNpcChoice} from './npc-scenes.js';
 
 const cap=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
 const roll=g=>{g.seed=(Math.imul(g.seed,1664525)+1013904223)>>>0;return g.seed/4294967296;};
@@ -22,20 +24,20 @@ function record(g,label,result){
   timeline(g,result,'story');
 }
 export function ensureStory(g){
- if(g.story?.version===3){initMemory(g);return g.story;}
+ if(g.story?.version===3){initMemory(g);initNpcWorld(g);return g.story;}
  // Migrate existing Football Life careers without replacing their decisions,
  // money, relationships, previous scandals or scheduled story events.
  if(g.story?.version===2){
    g.story.version=3;
    g.story.pending ||= [];g.story.flags ||= {};g.story.journal ||= [];
-   initMemory(g);
+   initMemory(g);initNpcWorld(g);
    return g.story;
  }
  g.story={version:3,step:0,dayKey:'',pending:[],flags:{},journal:[],
    agentTrust:58,clubTrust:58,media:22,privacy:68,temptation:0,sponsor:0,
    scandal:0,financialPressure:0,romanceHeat:0,focus:55,agentDeal:false,
    lastEvent:'',matches:0};
- initMemory(g);return g.story;
+ initMemory(g);initNpcWorld(g);return g.story;
 }
 function training(g){
  const role=POSITIONS.find(x=>x.id===g.position)?.focus||'passing';
@@ -55,8 +57,17 @@ function pendingEvent(g){
  const due=g.story.pending.map((p,i)=>({p,i})).filter(x=>x.p.due<=dateNum(g)).sort((a,b)=>a.p.due-b.p.due||a.i-b.i);
  if(!due.length)return null;
  const item=g.story.pending.splice(due[0].i,1)[0];
- if(item.payload?.actor?.startsWith('partner:')&&item.payload.actor!==currentPartnerId(g))return pendingEvent(g);
+ if(item.payload?.actor?.startsWith('partner:')&&item.payload.actor!==currentPartnerId(g)){
+   markArc(g,item);return pendingEvent(g);
+ }
+ if(item.kind?.startsWith('npcPartner')&&item.payload?.partnerId!==g.personal?.personId){
+   markArc(g,item);return pendingEvent(g);
+ }
  markArc(g,item);
+ if(item.kind?.startsWith('npc')){
+   const autonomous=npcScene(g,item);
+   return autonomous||pendingEvent(g);
+ }
  const name=partner(g)?.name||'партнер';
  switch(item.kind){
  case 'photo':
@@ -284,6 +295,7 @@ function limited(s,max){const words=String(s).trim().split(/\s+/);return words.s
 export function getScene(g){
  ensureStory(g);
  updateMemoryClock(g);
+ advanceNpcWorld(g);
  if(g.match||g.day===6)return match(g);
  const today=dateNum(g),s=g.story;
  if(s.dayKey!==String(today)){s.dayKey=String(today);s.step=0;s.active=null;}
@@ -304,7 +316,8 @@ export function takeChoice(g,side){
  if(!selected)return {ok:false,message:'Немає такого рішення.'};
  const id=selected.id;
  let result={ok:true,message:'Рішення прийнято.'},advance=true;
- if(id.startsWith('train:')){
+ if(id.startsWith('npc:'))result=resolveNpcChoice(g,id);
+ else if(id.startsWith('train:')){
   const skill=id.slice(6);
   if(skill==='rest')stat(g,{energy:11,stress:-3,form:-1});
   else if(skill==='study')stat(g,{morale:2,reputation:1,energy:-2});
@@ -651,6 +664,8 @@ export function takeChoice(g,side){
    }else s.step++;
  }
  if(s.sponsor&&s.scandal>48&&!s.flags.sponsorCrisis){setFlag(g,'sponsorCrisis',true);postpone(g,'sponsorThreat',2);}
+ // Advance other characters on the in-game calendar, never the wall clock.
+ advanceNpcWorld(g);
  if(g.personal.personId&&g.personal.tension>=90&&roll(g)<.3){
    social(g,{bond:-12,trust:-9});
    postpone(g,'partnerDoubt',1);
