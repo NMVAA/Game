@@ -462,3 +462,166 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .rpg-hud>span{grid-column:1/-1;text-align:center}
  .rpg-perks{grid-template-columns:1fr}
 }
+
+
+/*
+ * Mobile readability update: real full-height outcome screen.
+ * Overrides the earlier compact pop-up and 9-12px mobile typography.
+ */
+.choice-outcome-overlay{
+ padding:18px;
+ background:linear-gradient(160deg,#07140df9,#071b10fd);
+}
+.choice-outcome-sheet{
+ width:min(100%,720px);
+ max-height:min(94dvh,960px);
+ height:auto;
+ padding:0;
+ overflow:hidden;
+ display:flex;
+ flex-direction:column;
+ gap:0;
+}
+.outcome-scroll{
+ flex:1 1 auto;
+ min-height:0;
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;
+ padding:28px 26px 20px;
+ display:flex;
+ flex-direction:column;
+ gap:14px;
+}
+.outcome-kicker{font-size:15px;letter-spacing:1px;line-height:1.35}
+.outcome-story{font-size:15px;line-height:1.4}
+.outcome-situation{font-size:16px;line-height:1.4;color:#c8dcca}
+.choice-outcome-sheet h2{font-size:clamp(30px,6vw,40px);line-height:1.12;letter-spacing:-.5px}
+.outcome-main{font-size:19px;line-height:1.55;padding-left:15px;border-left-width:4px}
+.outcome-section{gap:11px;padding-top:17px;border-top-color:#b2d59d5b}
+.outcome-section h3{font-size:17px;line-height:1.3;letter-spacing:.3px}
+.outcome-effects{gap:10px}
+.outcome-effect{gap:9px;padding:15px 14px;border-radius:12px}
+.outcome-effect span{font-size:15px;line-height:1.35;color:#e0ebde}
+.outcome-effect b{font-size:25px;line-height:1.2}
+.outcome-empty{font-size:16px;line-height:1.5}
+.outcome-more{font-size:13px;line-height:1.4}
+.outcome-future{gap:9px}
+.outcome-future>div{gap:10px;padding:14px;border-radius:12px}
+.outcome-future span{font-size:15px;line-height:1.4}
+.outcome-future b{font-size:14px;line-height:1.3}
+.outcome-verdict{font-size:15px;line-height:1.45;padding:14px;border-radius:12px}
+.outcome-footer{
+ flex:0 0 auto;
+ display:flex;
+ flex-direction:column;
+ gap:9px;
+ padding:14px 25px 20px;
+ background:#10271ad9;
+ border-top:1px solid #b2d59d55;
+}
+.outcome-continue{
+ min-height:65px;
+ font-size:18px;
+ line-height:1.2;
+ padding:16px 20px;
+ border-radius:13px;
+ box-shadow:0 6px 20px #0007;
+}
+.outcome-continue span{font-size:25px}
+.outcome-auto{font-size:13px;line-height:1.35;color:#ccdaca}
+.outcome-rpg{gap:10px}
+.outcome-rpg-xp,.outcome-rpg-check,.outcome-rpg-perk{padding:13px 15px}
+.outcome-rpg strong{font-size:17px}
+.outcome-rpg span{font-size:14px;line-height:1.45}
+@media(max-width:800px){
+ .choice-outcome-overlay{
+  display:block;
+  padding:0;
+  height:100dvh;
+  width:100%;
+  background:#0a1b10;
+ }
+ .choice-outcome-sheet{
+  width:100%;
+  max-width:none;
+  height:100dvh;
+  max-height:100dvh;
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+  background:linear-gradient(165deg,#1b3e29,#0d2519 63%,#0c2014);
+ }
+ .outcome-scroll{
+  padding:calc(23px + env(safe-area-inset-top,0px))
+    max(22px,env(safe-area-inset-right,0px))
+    18px max(22px,env(safe-area-inset-left,0px));
+  gap:13px;
+ }
+ .outcome-footer{
+  padding:13px max(22px,env(safe-area-inset-right,0px))
+   calc(16px + env(safe-area-inset-bottom,0px))
+   max(22px,env(safe-area-inset-left,0px));
+ }
+ .outcome-kicker{font-size:16px}
+ .outcome-story{font-size:16px}
+ .outcome-situation{font-size:17px}
+ .choice-outcome-sheet h2{font-size:clamp(31px,8vw,42px);line-height:1.14}
+ .outcome-main{font-size:20px;line-height:1.52}
+ .outcome-section h3{font-size:18px}
+ .outcome-effect span{font-size:15px}
+ .outcome-effect b{font-size:25px}
+ .outcome-future span{font-size:16px}
+ .outcome-future b{font-size:14px}
+ .outcome-continue{min-height:66px;font-size:19px}
+}
+@media(max-width:420px){
+ .outcome-effects{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .outcome-effect{padding:12px}
+ .outcome-scroll{gap:11px}
+}
+@media(max-height:720px) and (max-width:800px){
+ .choice-outcome-sheet h2{font-size:30px}
+ .outcome-main{font-size:18px}
+ .outcome-scroll{gap:10px;padding-top:calc(15px + env(safe-area-inset-top,0px))}
+ .outcome-section{padding-top:12px;gap:8px}
+ .outcome-effect b{font-size:22px}
+ .outcome-continue{min-height:59px}
+}
+
+/* Larger, legible type on the swipe game itself. Keep both decision directions. */
+@media(max-width:800px){
+ .club-info strong{font-size:14px}
+ .club-info small{font-size:11px}
+ .cash{font-size:14px}
+ .progress{font-size:12px}
+ .meter small{font-size:11px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
+ .meter strong{font-size:19px}
+ .scenario-copy h1{font-size:clamp(28px,7vw,40px);line-height:1.1}
+ .scenario-copy p,.scenario-copy p.long{font-size:clamp(17px,4.2vw,21px);line-height:1.45}
+ .scenario-tag{font-size:13px}
+ .choice{min-height:104px;padding:11px;gap:7px}
+ .choice>span{font-size:23px}
+ .choice strong{font-size:clamp(16px,4vw,20px);line-height:1.22}
+ .choice small{font-size:clamp(13px,3.4vw,16px);line-height:1.36}
+ .swipe-instructions{font-size:11px}
+ .rpg-hud>b{font-size:14px}
+ .rpg-hud small{font-size:12px}
+ .rpg-hud>span{font-size:11px;line-height:1.2}
+ .rpg-level-banner strong{font-size:14px}
+ .rpg-level-banner span{font-size:13px;line-height:1.4}
+ .rpg-details summary{font-size:14px}
+ .rpg-details summary span{font-size:12px}
+ .journal-title small{font-size:13px}
+ .journal-stats{font-size:13px}
+ .plot-details summary,.adult-details summary,.npc-details summary,.memory-details summary{font-size:13px}
+}
+@media(max-height:650px) and (max-width:800px){
+ .choice{min-height:81px;padding:8px;gap:4px}
+ .choice strong{font-size:15px}
+ .choice small{font-size:12px}
+ .meter small{font-size:10px}
+ .meter strong{font-size:15px}
+ .scenario-copy h1{font-size:25px}
+ .scenario-copy p,.scenario-copy p.long{font-size:16px}
+}
