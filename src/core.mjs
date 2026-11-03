@@ -1,5 +1,5 @@
 /** Deterministic game logic; no browser or Three.js dependency. Metres and seconds. */
-export const VERSION = '0.4.4';
+export const VERSION = '0.4.5';
 export const ORIGIN = [47.653, 34.094];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const finite = (v, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
@@ -191,8 +191,14 @@ export function stepVehicle(s, input, dt, world) {
   const canDrive=s.fuel>0&&s.health>0;
   let acc=0;
   if (input.gas && canDrive) acc = forward < -.5 ? 15 : (8.8+s.engine*1.7)*(0.45+s.health*.0055);
-  if (input.brake) acc = forward > .5 ? -19 : canDrive ? -5 : 0;
-  forward += acc*dt;
+  if (input.brake) {
+    // Service brakes are mechanical: fuel depletion or engine damage must
+    // never leave a moving vehicle unable to stop. Only a running engine
+    // allows this pedal to transition to reverse from a standstill.
+    if (!canDrive) forward = Math.sign(forward)*Math.max(0,Math.abs(forward)-19*dt);
+    else if (forward>.5) forward = Math.max(0,forward-19*dt);
+    else forward -= 5*dt;
+  } else forward += acc*dt;
   const resistance = s.road ? .12 : 1.05;
   forward *= Math.exp(-(resistance+Math.abs(forward)*.004+(input.handbrake?2.3:0))*dt);
   if (!input.gas&&!input.brake&&Math.abs(forward)<.08) forward=0;

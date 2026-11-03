@@ -2,6 +2,12 @@
 
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
+## Version 0.4.5 — Fail-safe braking when the engine stops
+
+- Service brakes now decelerate the car even with empty fuel or 0% engine health, so a damaged or stranded car does not coast uncontrollably.
+- A powerless car cannot reverse by holding the brake pedal; a working car keeps the normal brake-to-reverse behavior.
+- Regression tests cover powered/unpowered forward stopping, reverse roll, and held brake behavior; refresh the offline PWA cache.
+
 ## Version 0.4.4 — Full-width vehicle collision and sideways crash damage
 
 - Extend swept car collisions from front/rear probes to three overlapping footprint circles. Narrow objects beside a door can no longer pass through the middle of the vehicle.

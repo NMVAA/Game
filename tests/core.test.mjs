@@ -28,6 +28,28 @@ test('door-side collisions stop lateral clipping and apply speed-based damage',(
   assert.equal(s.hits,1);
   assert.ok(s.health<100,'a sideways impact must damage the car even at zero forward speed');
 });
+test('service brakes stop an unpowered car without accidentally engaging reverse',()=>{
+  const world=flat();
+  for(const failed of ['fuel','health']){
+    const braking=createState({[failed]:0}),coasting=createState({[failed]:0});
+    for(const state of [braking,coasting]){state.vz=19;state.speed=19;}
+    for(let i=0;i<90;i++){
+      stepVehicle(braking,{brake:true},1/60,world);
+      stepVehicle(coasting,{},1/60,world);
+    }
+    assert.ok(Math.abs(braking.speed)<.01,`${failed}: brakes failed to stop the car`);
+    assert.ok(coasting.speed>10,`${failed}: stopped from passive drag, not brakes`);
+    for(let i=0;i<90;i++)stepVehicle(braking,{brake:true},1/60,world);
+    assert.equal(braking.speed,0,`${failed}: held brake should not reverse without power`);
+    const reverse=createState({[failed]:0});
+    reverse.vz=-12;reverse.speed=-12;
+    for(let i=0;i<90;i++)stepVehicle(reverse,{brake:true},1/60,world);
+    assert.equal(reverse.speed,0,`${failed}: brakes should stop reverse roll too`);
+  }
+  const powered=createState();
+  for(let i=0;i<90;i++)stepVehicle(powered,{brake:true},1/60,world);
+  assert.ok(powered.speed<-.5,'powered brake/reverse pedal should still engage reverse');
+});
 test('empty fuel or broken car cannot accelerate',()=>{for(const key of ['fuel','health']){const w=flat(),s=createState({[key]:0});for(let i=0;i<120;i++)stepVehicle(s,{gas:true},1/60,w);assert.equal(s.z,0);}});
 test('save migration sanitizes numbers and preserves progress',()=>{const s=createState({fuel:42,money:600,goal:3,health:999,engine:90,tires:-4,travel:'bad'});assert.equal(s.fuel,42);assert.equal(s.money,600);assert.equal(s.goal,3);assert.equal(s.health,100);assert.equal(s.engine,3);assert.equal(s.tires,0);assert.equal(s.travel,0);});
 test('rescue reset preserves fuel, damage and money',()=>{const s=createState({fuel:41,health:62,money:500});spawnAt(s,{x:10,z:20,angle:1});assert.equal(s.x,10);assert.equal(s.fuel,41);assert.equal(s.health,62);assert.equal(s.money,500);});
