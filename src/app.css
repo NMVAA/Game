@@ -389,3 +389,76 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .outcome-future>div{padding:7px}
 }
 @media(prefers-reduced-motion:reduce){.outcome-timer>i{animation:none}}
+
+
+/* RPG progression is embedded in the existing card/journal layout. */
+.rpg-hud{
+ display:grid;grid-template-columns:auto minmax(35px,1fr) auto auto;
+ align-items:center;gap:7px;margin:6px 0 8px;
+ font-variant-numeric:tabular-nums;
+}
+.rpg-hud>b{font-size:10px;font-weight:950;color:#e5ffba;white-space:nowrap}
+.rpg-hud>div{height:5px;background:#081910;border-radius:8px;overflow:hidden;border:1px solid #9ad58138}
+.rpg-hud>div i{display:block;height:100%;background:linear-gradient(90deg,#82cc6c,#f1f685);border-radius:8px}
+.rpg-hud small{font-size:9px;color:#d1e5c0;white-space:nowrap}
+.rpg-hud>span{background:#deefa8;color:#1d3815;font-size:8px;font-weight:950;
+ padding:3px 5px;border-radius:6px;white-space:nowrap}
+.rpg-level-banner{display:flex;flex-direction:column;gap:4px;padding:9px 10px;
+ background:#0b211ccc;border:1px solid #d9ed92a1;border-radius:10px;
+ color:#eaf9d3;box-shadow:0 5px 20px #0007}
+.rpg-level-banner strong{font-size:11px;letter-spacing:.55px;color:#d2fc8a}
+.rpg-level-banner span{font-size:10px;line-height:1.35;color:#edf6db}
+.rpg-details{flex:none;max-height:min(45dvh,420px);overflow:auto;overscroll-behavior:contain;
+ padding:0 11px 11px;margin-bottom:11px;border:1px solid #9fce8488;
+ border-radius:13px;background:linear-gradient(140deg,#172c21,#10231e)}
+.rpg-details summary{cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;
+ gap:7px;justify-content:space-between;position:sticky;top:0;z-index:2;
+ padding:13px 2px;background:#182d21;color:#d2fda9;
+ font-size:11px;font-weight:900;letter-spacing:.4px}
+.rpg-details summary span{font-size:9px;color:#d0e5c2;letter-spacing:0}
+.rpg-hero{background:#294532b7;border-radius:10px;padding:11px;display:flex;
+ flex-direction:column;gap:8px}
+.rpg-hero>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rpg-hero strong{font-size:23px;font-weight:950;color:#e4ffbc}
+.rpg-hero small{font-size:10px;color:#d0e4c6}
+.rpg-progress-track{height:7px;background:#0a2113;overflow:hidden;border-radius:7px}
+.rpg-progress-track i{display:block;height:100%;background:linear-gradient(90deg,#93cf66,#f6f29f)}
+.rpg-ready{font-size:11px;font-weight:850;color:#ffd89c;margin:0;line-height:1.5}
+.rpg-stat-list{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+.rpg-stat{display:grid;grid-template-columns:minmax(90px,1fr) minmax(40px,2fr) 37px;
+ gap:9px;align-items:center}
+.rpg-stat span{font-size:11px;color:#e2ecde}
+.rpg-stat-track{height:5px;background:#0a1a11;overflow:hidden;border-radius:7px}
+.rpg-stat-track i{display:block;height:100%;background:#acde8e}
+.rpg-stat b{text-align:right;font-size:11px;color:#d7ffaa;font-variant-numeric:tabular-nums}
+.rpg-label{font-size:10px;font-weight:900;letter-spacing:.8px;color:#d6f6b4}
+.rpg-perks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:9px 0}
+.rpg-perks article{background:#2b4637;border-radius:9px;padding:8px;border:1px solid #e1f0a023}
+.rpg-perks article b{font-size:10px;color:#e6ffc6}
+.rpg-perks article p{font-size:9px;line-height:1.5;color:#cbdbc9;margin:4px 0 0}
+.rpg-empty{font-size:11px;line-height:1.5;margin:0;color:#d0ddc7;grid-column:1/-1}
+.rpg-check-total{font-size:10px;color:#b9d5b4;margin:10px 0 0}
+.outcome-rpg{display:flex;flex-direction:column;gap:6px}
+.outcome-rpg>div{display:flex;align-items:center;justify-content:space-between;gap:9px;
+ padding:9px 11px;border-radius:10px;background:#2d422e;border:1px solid #a8da8670}
+.outcome-rpg strong{font-size:11px;font-weight:950;color:#dcffb9}
+.outcome-rpg span{font-size:10px;color:#e8edcf;text-align:right}
+.outcome-rpg-check.fail{border-color:#e6a58a78;background:#452f2b}
+.outcome-rpg-check.fail strong{color:#ffccaa}
+.outcome-rpg-check.pass strong{color:#a9f6ae}
+.outcome-rpg-perk{border-color:#f2dd968e!important;background:#3e4027!important}
+.outcome-rpg-perk strong{color:#fff1b3}
+@media(max-height:730px){
+ .rpg-hud{margin:2px 0 5px;gap:5px}
+ .rpg-hud>span{font-size:7px}
+ .rpg-level-banner{padding:6px 8px;gap:2px}
+ .rpg-level-banner strong{font-size:9px}
+ .rpg-level-banner span{font-size:9px}
+ .rpg-details{max-height:34dvh}
+ .outcome-rpg>div{padding:6px 8px}
+}
+@media(max-width:355px){
+ .rpg-hud{grid-template-columns:auto minmax(32px,1fr) auto}
+ .rpg-hud>span{grid-column:1/-1;text-align:center}
+ .rpg-perks{grid-template-columns:1fr}
+}
