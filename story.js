@@ -83,6 +83,16 @@ function pendingEvent(g){
     'Після трансферу близька людина не впевнена, що хоче залишити своє місто.',
     opt('Шукати спільне рішення','-гроші, +довіра','move:compromise'),
     opt('Поставити кар’єру першою','+фокус, -близькість','move:career'),true);
+ case 'affairExposure':
+  return event('affairExposure','ОСОБИСТЕ · ВИКРИТТЯ','Таємниця більше не таємниця',
+    'Близька людина дізналася про таємну зустріч. Слова можуть не врятувати ваші стосунки.',
+    opt('Сказати всю правду','Втрата довіри, шанс примирення','affair:confess'),
+    opt('Заперечувати','Відкладена криза довіри','affair:deny'),true);
+ case 'sponsorThreat':
+  return event('sponsorThreat','КОНТРАКТ · КОНФЛІКТ','Спонсор ставить ультиматум',
+    'Після скандалу спонсор вимагає публічного вибачення або погрожує розірвати контракт.',
+    opt('Визнати відповідальність','Менше доходу, шанс зберегти угоду','sponsor:apology'),
+    opt('Відмовитися','Свобода, фінансовий удар','sponsor:walk'),true);
  case 'investment':
   return event('investment','ФІНАНСИ · НАСЛІДКИ','Ризикована інвестиція',
     'Твоя інвестиція змінилася в ціні. Агент пропонує зафіксувати результат або ризикнути.',
@@ -149,6 +159,12 @@ function life(g){
     opt('Зробити пропозицію','+сімейна стабільність, витрати','relation:marry'),
     opt('Відкласти рішення','+фокус на кар’єрі, ризик сварки','relation:postpone'),true);
  const cases=[
+   ...(r.stage!=='acquaintance'&&g.story.romanceHeat>5?[
+     event('secret','СПОКУСА · 21+','Таємне запрошення',
+       'Доросла знайома пропонує провести ніч разом. Відвертість може коштувати нинішніх стосунків.',
+       opt('Прийняти запрошення','Ризик зради та розголосу','secret:accept'),
+       opt('Відмовитися','Менше драми, +довіра','secret:decline'),true)
+   ]:[]),
    event('date','РОМАНТИКА · 21+','Довгоочікуване побачення',p.name+' звільнив вечір. Ти вирішуєш, як його провести.',
     opt('Влаштувати вечерю','€180, +близькість','date:dinner'),opt('Поговорити вдома','Без витрат, +довіра','date:talk')),
    event('intimacy','БЛИЗЬКІСТЬ · 21+','Ніч лише для вас',p.name+' пропонує провести ніч разом. Важливі взаємна згода, довіра та особисті межі.',
@@ -226,7 +242,7 @@ export function takeChoice(g,side){
   else result=train(g,skill);
   s.focus=cap(s.focus+(skill==='rest'?0:3));
  }
- else if(id.startsWith('meet:'))result=meet(g,id.slice(5));
+ else if(id.startsWith('meet:'))result=g.daily.social?{ok:true,message:'Ти вже провів час із людьми сьогодні. Знайомство відкладається.'}:meet(g,id.slice(5));
  else if(id.startsWith('match:')){
   const action=id.slice(6);
   if(action==='wait'){result=nextDay(g);}
@@ -253,8 +269,10 @@ export function takeChoice(g,side){
   if(['commit','live','marry'].includes(action))result=relationshipAction(g,action);
   else if(action==='delay'||action==='separate'||action==='postpone'){social(g,{bond:-5,tension:7});stat(g,{stress:2});}
  }
- else if(id==='date:dinner'){result=relationshipAction(g,'date');if(!result.ok)stat(g,{morale:-2});}
- else if(id==='date:talk')result=relationshipAction(g,'talk');
+ else if(id==='date:dinner'){
+   result=g.daily.social?{ok:true,message:'Сьогодні ви вже бачилися. Завтра буде новий шанс.'}:relationshipAction(g,'date');
+ }
+ else if(id==='date:talk')result=g.daily.social?{ok:true,message:'Ви вже поговорили сьогодні. Не квап події.'}:relationshipAction(g,'talk');
  else if(id==='intimacy:yes'){
   // Explicit mutual consent, off-screen intimacy, adult characters only.
   social(g,{bond:9,trust:3,tension:-4});stat(g,{energy:-8,morale:5});
@@ -262,6 +280,40 @@ export function takeChoice(g,side){
   result={ok:true,message:'Ви провели близьку ніч разом за взаємною згодою.'};
  }
  else if(id==='intimacy:no'){social(g,{trust:5,tension:-2});stat(g,{energy:5});result={ok:true,message:'Особисті межі поважаються. Довіра зросла.'};}
+ else if(id==='secret:accept'){
+   social(g,{trust:-6,tension:4});
+   stat(g,{energy:-10,morale:7,stress:8});
+   setFlag(g,'secretLiaison',true);
+   s.scandal=cap(s.scandal+16);
+   s.romanceHeat=cap(s.romanceHeat+8);
+   postpone(g,'affairExposure',2+Math.floor(roll(g)*4));
+   if(s.sponsor)postpone(g,'sponsorThreat',5);
+   result={ok:true,message:'Взаємна близькість залишилася таємницею лише на деякий час.'};
+ }
+ else if(id==='secret:decline'){
+   social(g,{trust:7,tension:-4});
+   stat(g,{morale:-2,stress:-3});
+   result={ok:true,message:'Ти не порушив довіри партнера. Запрошення залишилося в минулому.'};
+ }
+ else if(id==='affair:confess'){
+   setFlag(g,'secretLiaison',false);
+   social(g,{trust:-23,bond:-16,tension:19});
+   stat(g,{stress:17,morale:-9});
+   s.scandal=cap(s.scandal-8);
+   if(g.personal.bond<15){relationshipAction(g,'breakup');}
+ }
+ else if(id==='affair:deny'){
+   social(g,{trust:-16,tension:18});
+   s.scandal=cap(s.scandal+15);
+   postpone(g,'partnerDoubt',3);
+ }
+ else if(id==='sponsor:apology'){
+   s.scandal=cap(s.scandal-14);stat(g,{money:-Math.min(g.money,900),reputation:-3,morale:-3});
+ }
+ else if(id==='sponsor:walk'){
+   s.sponsor=0;stat(g,{money:-Math.min(g.money,2800),reputation:-4,stress:12});
+   result={ok:true,message:'Спонсор припинив співпрацю. Твоя свобода має фінансову ціну.'};
+ }
  else if(id==='travel:yes'){if(g.money>=520){stat(g,{money:-520,energy:-17,form:-4,morale:6});social(g,{bond:15,trust:3});}else result={ok:false,message:'Зараз не вистачає коштів на поїздку.'};}
  else if(id==='travel:no'){stat(g,{form:4,energy:-7});social(g,{bond:-5,tension:6});}
  else if(id==='jealousy:explain'){social(g,{trust:9,tension:-9});s.privacy=cap(s.privacy-5);}
@@ -322,6 +374,7 @@ export function takeChoice(g,side){
      else{s.step=0;s.dayKey='';}
    }else s.step++;
  }
+ if(s.sponsor&&s.scandal>48&&!s.flags.sponsorCrisis){setFlag(g,'sponsorCrisis',true);postpone(g,'sponsorThreat',2);}
  if(g.personal.personId&&g.personal.tension>=90&&roll(g)<.3){
    social(g,{bond:-12,trust:-9});
    postpone(g,'partnerDoubt',1);
