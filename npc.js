@@ -71,7 +71,7 @@ function coachTurn(g,w,a,day){
  const memory=initMemory(g).actors.coach,access=careerAccess(g);
  a.goalProgress+=a.motivation/17;
  const rival=w.people.rival;
- if(access.benchRisk||memory.resentment>30||g.form<45){
+ if((access.benchRisk||memory.resentment>30||g.form<45) && rival.clubId===g.clubId){
   interest(g,a,3);interest(g,rival,5);
   rival.goalProgress+=17;
   decide(w,a,g,day,'bench-competition',a.name+' ставить під сумнів твоє місце в основі.');
@@ -80,8 +80,9 @@ function coachTurn(g,w,a,day){
   decide(w,a,g,day,'captain-discussion',a.name+' обговорює твоє підвищення з капітаном.');
   signal(g,'npcCoachPromotion',2,{coach:a.id},'npc-coach-promotion-'+day);
  }else{
-  rival.goalProgress+=8;interest(g,a,2);
-  decide(w,a,g,day,'extra-practice',a.name+' запровадив додаткові тренування для конкурентів.');
+  if(rival.clubId===g.clubId)rival.goalProgress+=8;
+  interest(g,a,2);
+  decide(w,a,g,day,'extra-practice',a.name+' запровадив додаткові тренування для команди.');
   signal(g,'npcCoachDrill',2,{coach:a.id},'npc-coach-drill-'+day);
  }
  a.nextMove=day+5+Math.floor(random(g)*4);
@@ -128,6 +129,19 @@ function teammateTurn(g,w,a,day){
 }
 function rivalTurn(g,w,a,day){
  a.goalProgress+=a.motivation/11;
+ if(a.goal==='transfer'&&a.clubId===g.clubId){
+   const destination=select(g,CLUBS.filter(c=>c.id!==g.clubId));
+   a.clubId=destination.id;a.goal='new-club';a.goalProgress=12;
+   w.moves++;
+   decide(w,a,g,day,'transferred',a.name+' самостійно підписав контракт із '+destination.name+'.');
+   a.nextMove=day+12+Math.floor(random(g)*5);
+   return;
+ }
+ if(a.clubId!==g.clubId){
+   a.goalProgress=Math.min(100,a.goalProgress);
+   decide(w,a,g,day,'other-team',a.name+' виступає за інший клуб і розвиває свою кар’єру.');
+   a.nextMove=day+13;return;
+ }
  const coach=initMemory(g).actors.coach;
  if(a.goalProgress>=83 && coach.trust<74){
   a.goalProgress=0;
@@ -135,6 +149,7 @@ function rivalTurn(g,w,a,day){
   signal(g,'npcRivalCompetition',1,{rival:a.id},'npc-rival-challenge-'+day);
  }else if(a.goalProgress>=95){
   a.goalProgress=24;
+  a.goal='transfer';
   decide(w,a,g,day,'found-agent',a.name+' почав переговори з іншим клубом.');
   signal(g,'npcRivalTransfer',2,{rival:a.id},'npc-rival-transfer-'+day);
  }else {
