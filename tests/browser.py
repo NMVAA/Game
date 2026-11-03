@@ -16,6 +16,9 @@ with tempfile.TemporaryDirectory() as folder:
             page.wait_for_function('window.__GAME_TEST__?.ready === true',timeout=90000)
             assert page.title()=='Game'
             data=page.evaluate('window.__GAME_TEST__.map');assert data['roads']>20 and data['buildings']>10,data
+            landscape=page.evaluate('window.__GAME_TEST__.landscape')
+            assert landscape and landscape['interpretive'] and landscape['roofCount']>=data['buildings'],landscape
+            assert landscape['treeCount']>30,landscape
             tour=page.evaluate('window.__GAME_TEST__.tour')
             assert tour and tour['points']>=3 and tour['startOffset']<=240 and tour['endOffset']<=250,tour
             assert tour['spawnDistance']<=55,tour
@@ -91,7 +94,7 @@ with tempfile.TemporaryDirectory() as folder:
             ctx.set_offline(True);page.reload(wait_until='domcontentloaded');page.wait_for_function('window.__GAME_TEST__?.ready === true',timeout=90000)
             page.locator('#start').click();page.screenshot(path=str(OUTPUT/'06-offline.png'));ctx.set_offline(False)
             assert not errors,errors
-            report={'status':'passed','map':data,'tour':tour,'state_after_walk':walker,'state_after_drive':state,'offline_reload':True,'javascript_errors':errors,'render':page.evaluate('window.__GAME_TEST__.render')}
+            report={'status':'passed','map':data,'landscape':landscape,'tour':tour,'state_after_walk':walker,'state_after_drive':state,'offline_reload':True,'javascript_errors':errors,'render':page.evaluate('window.__GAME_TEST__.render')}
             (OUTPUT/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2));print(json.dumps(report,ensure_ascii=False))
         except Exception:
             page.screenshot(path=str(OUTPUT/'failure.png'));(OUTPUT/'errors.json').write_text(json.dumps(errors,ensure_ascii=False));raise
