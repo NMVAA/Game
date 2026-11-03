@@ -1,5 +1,6 @@
 import {CLUBS,CLUB_BY_ID,CONTACT_BY_ID,POSITIONS,ASSETS,fixtures,opponentFor} from './data.js';
 import {careerAccess} from './memory.js';
+import {rpgBonus} from './rpg.js';
 export const SAVE_KEY='football-life-save-v1';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const skillAvg=p=>Math.round(Object.values(p.skills).reduce((a,b)=>a+b,0)/4);
@@ -44,8 +45,8 @@ export function nextDay(g){
   if(g.match)return {ok:false,message:'Спочатку заверши матч.'};
   if(g.day>=6)return {ok:false,message:'Сьогодні матч. Вийди на поле або обери швидку симуляцію.'};
   g.day++;g.daily={trained:false,social:false,lifestyle:false};
-  g.energy=clamp(g.energy+11,0,100);
-  g.stress=clamp(g.stress-3,0,100);
+  g.energy=clamp(g.energy+11+rpgBonus(g,'recovery'),0,100);
+  g.stress=clamp(g.stress-3-rpgBonus(g,'stress'),0,100);
   if(g.personal.personId){
     g.personal.quietDays++;
     if(g.personal.quietDays>=5){g.personal.bond=clamp(g.personal.bond-3,0,100);g.personal.tension=clamp(g.personal.tension+4,0,100);}
@@ -61,9 +62,11 @@ export function train(g,skill){
   if(!Object.hasOwn(g.player.skills,skill))return {ok:false,message:'Невідома вправа.'};
   if(g.energy<19)return {ok:false,message:'Замало енергії. Відпочинь.'};
   const before=g.player.skills[skill];
-  const growth=before<75?2:before<90?1:chance(g)<.32?1:0;
+  const growth=(before<75?2:before<90?1:chance(g)<.32?1:0)+
+    (before<95?rpgBonus(g,'training'):0);
   g.player.skills[skill]=clamp(before+growth,0,99);
-  g.energy=clamp(g.energy-20,0,100);g.stress=clamp(g.stress+2,0,100);
+  g.energy=clamp(g.energy-Math.max(10,20-rpgBonus(g,'fatigue')),0,100);
+  g.stress=clamp(g.stress+Math.max(0,2-rpgBonus(g,'stress')),0,100);
   g.form=clamp(g.form+2,0,100);g.daily.trained=true;
   note(g,`Тренування: ${skill}. +${growth} до навички, форма зросла.`,'football');
   return {ok:true,message:`Тренування завершене. Навичка +${growth}.`};
@@ -77,7 +80,8 @@ export function recover(g,kind){
     therapy:{cost:110,energy:10,stress:-16,morale:2,text:'Розмова з психологом'}};
   const a=options[kind];if(!a)return {ok:false,message:'Невідома дія.'};
   if(g.money<a.cost)return {ok:false,message:'Недостатньо грошей.'};
-  g.money-=a.cost;g.energy=clamp(g.energy+a.energy,0,100);
+  g.money-=a.cost;g.energy=clamp(g.energy+a.energy+
+    (a.energy>0?rpgBonus(g,'recovery'):0),0,100);
   g.morale=clamp(g.morale+a.morale,0,100);g.stress=clamp(g.stress+a.stress,0,100);
   if(kind==='party'&&g.personal.personId&&chance(g)<.5){g.personal.tension+=7;note(g,'Партнеру не сподобалося, що ти не попередив про вечірку.','personal');}
   g.daily.lifestyle=true;note(g,a.text+'.','personal');return {ok:true,message:a.text};
@@ -141,7 +145,8 @@ export function negotiate(g,id){
   o.negotiated=true;
   const access=g.story?.memory?careerAccess(g):null;
   const agent=g.story?.memory?.actors?.agent;
-  const confidence=clamp(.55+g.reputation/350+(agent?.trust??50)/500-(agent?.resentment??0)/280, .12, .91);
+  const confidence=clamp(.55+g.reputation/350+(agent?.trust??50)/500-(agent?.resentment??0)/280+
+    rpgBonus(g,'contract'), .12, .91);
   if(!access?.agentFrozen&&chance(g)<confidence){o.wage=Math.round(o.wage*1.16/100)*100;o.bonus=Math.round(o.bonus*1.12/100)*100;
     note(g,`${CLUB_BY_ID[o.clubId].name} погодився підвищити зарплату.`,'transfer');
     return {ok:true,message:'Агент домовився про підвищену зарплату.'};}
@@ -202,7 +207,8 @@ export function matchAction(g,action){
     +(captain?(captain.loyalty-10)/550-(captain.resentment||0)/1050:0);
   const rivalActor=g.story?.npcs?.people?.rival;
   const rivalPressure=rivalActor?.clubId===g.clubId?(rivalActor.goalProgress??0)/1200:0;
-  const quality=clamp((g.form-50)/210+condition/4+chemistry-rivalPressure,-.24,.28);
+  const quality=clamp((g.form-50)/210+condition/4+chemistry-rivalPressure+
+    rpgBonus(g,'action'),-.24,.35);
   let line='';
   const scoring=(base)=>chance(g)<clamp(base+(scorePlayer(g)-opp)/220+quality,.03,.66);
   if(action==='pass'){
@@ -214,12 +220,12 @@ export function matchAction(g,action){
     const good=roll<clamp(.34+value.speed/230+quality,.2,.87);
     if(good){m.rating+=.22;line='Обіграш один в один! Ти відкрив простір для атаки.';}
     else {m.rating-=.22;line='Захисник прочитав твій фінт. Втрата м’яча.';}
-    g.energy=clamp(g.energy-3,0,100);
+    g.energy=clamp(g.energy-Math.max(1,3-rpgBonus(g,'fatigue')),0,100);
   }else if(action==='shoot'){
     const goal=scoring(.02+value.finishing/440);
     if(goal){m[ours]++;m.goals++;m.rating+=.8;line='ГОООЛ! Твій удар знаходить ворота!';}
     else {m.rating-=.07;line=roll>.55?'Постріл повз дальню стійку.':'Воротар рятує команду після удару.';}
-    g.energy=clamp(g.energy-2,0,100);
+    g.energy=clamp(g.energy-Math.max(1,2-rpgBonus(g,'fatigue')),0,100);
   }else{
     const good=roll<clamp(.36+value.defense/270+quality,.15,.85);
     if(good){m.rating+=.2;line='Ти виграв боротьбу та повернув м’яч команді.';}
@@ -249,7 +255,8 @@ function finishMatch(g){
   g.career.matches++;g.career.goals+=m.goals;g.career.assists+=m.assists;
   g.form=clamp(g.form+(m.rating-6.5)*3,30,99);
   g.morale=clamp(g.morale+(ownScore>oppScore?7:ownScore===oppScore?1:-6),0,100);
-  g.energy=clamp(g.energy-21,10,100);g.reputation=clamp(g.reputation+(m.goals?3:0)+(m.rating>7.5?2:0),0,100);
+  g.energy=clamp(g.energy-Math.max(11,21-rpgBonus(g,'fatigue')),10,100);
+  g.reputation=clamp(g.reputation+(m.goals?3:0)+(m.rating>7.5?2:0),0,100);
   g.lastResult={...m,earned,ownScore,oppScore};
   g.history.unshift({season:g.season,week:g.week,club:g.clubId,opponent:ownHome?m.away:m.home,score:`${ownScore}:${oppScore}`,rating:Math.round(m.rating*10)/10,goals:m.goals});
   g.history=g.history.slice(0,22);
