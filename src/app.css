@@ -242,3 +242,29 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .scenario-copy{z-index:3}
 .drag-choice{z-index:4}
 @media(prefers-reduced-motion:reduce){.scene-photo img,.menu-cover-image{filter:none}}
+
+
+/* High-resolution scene artwork (941×1672 originals); no upscaled thumbnails. */
+.scene-photo img,.menu-cover-image{
+  image-rendering:auto;
+  image-rendering:-webkit-optimize-contrast;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+}
+.scene-photo-stadium img{object-position:50% 28%;filter:saturate(1.04) contrast(1.05)}
+.scene-photo-stadium:after{background:linear-gradient(180deg,#07140e12 0%,#061b1199 62%,#06150cf5 100%)}
+.scene-art-training img{object-position:50% 27%;filter:saturate(1.12)}
+.scene-art-recovery img{object-position:50% 27%;filter:saturate(.85) contrast(1.08)}
+.scene-art-transfer img{object-position:50% 28%;filter:saturate(.88) contrast(1.05)}
+.scene-art-contract img{object-position:50% 26%;filter:saturate(.96) contrast(1.04)}
+.scene-art-romance img{object-position:51% 29%;filter:saturate(1.05)}
+.scene-art-intimacy img{object-position:50% 27%;filter:saturate(.98) contrast(1.02)}
+.scene-art-nightlife img{object-position:50% 28%;filter:saturate(1.11) contrast(1.04)}
+.scene-art-press img{object-position:50% 25%;filter:saturate(.92) contrast(1.08)}
+.scene-art-conflict img{object-position:50% 29%;filter:saturate(.91) contrast(1.08)}
+/* Keep legibility while letting art dominate the upper half of each swipe. */
+.scene-photo:after{background:linear-gradient(180deg,#09141112 0%,#0c1d1a24 43%,#06110b9c 71%,#06110bf0 96%,#06110b 100%)}
+.scene-photo-romance:after{background:linear-gradient(180deg,#1a0c1d10 0%,#230e2739 44%,#170d1fb1 77%,#0b0d17f5 100%)}
+.scene-photo-night:after{background:linear-gradient(180deg,#120e1d14 0%,#1e103943 47%,#0e0d24bb 76%,#090b18f5 100%)}
+.scene-photo-media:after{background:linear-gradient(180deg,#08131b12 0%,#0c193a40 48%,#071626bf 77%,#061018f8 100%)}
+.scene-photo-contract:after{background:linear-gradient(180deg,#12180e12 0%,#1b1b173f 48%,#0d1810c0 77%,#08130bf5 100%)}
