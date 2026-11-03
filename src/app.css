@@ -625,3 +625,121 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  .scenario-copy h1{font-size:25px}
  .scenario-copy p,.scenario-copy p.long{font-size:16px}
 }
+
+
+/*
+ * Outcome is a fullscreen page, never a centered modal, on any viewport.
+ * Earlier media queries were not consistently applied in mobile webviews.
+ * Content distributes vertically on short results and scrolls on long ones.
+ */
+.choice-outcome-overlay{
+ position:fixed!important;
+ inset:0!important;
+ display:block!important;
+ width:100%!important;
+ height:100vh!important;
+ height:100dvh!important;
+ min-height:0!important;
+ padding:0!important;
+ margin:0!important;
+ overflow:hidden!important;
+ background:#0b2518!important;
+ touch-action:pan-y;
+}
+.choice-outcome-sheet{
+ position:absolute!important;
+ inset:0!important;
+ width:100%!important;
+ height:100%!important;
+ max-width:none!important;
+ max-height:none!important;
+ min-width:0!important;
+ min-height:0!important;
+ margin:0!important;
+ padding:0!important;
+ overflow:hidden!important;
+ border:0!important;
+ border-radius:0!important;
+ box-shadow:none!important;
+ display:flex!important;
+ flex-direction:column!important;
+ gap:0!important;
+ background:linear-gradient(164deg,#214b31 0%,#163a28 42%,#0d2418 100%)!important;
+}
+.choice-outcome-sheet .outcome-scroll{
+ display:grid;
+ grid-template-columns:minmax(0,1fr);
+ align-content:space-evenly;
+ justify-content:stretch;
+ flex:1 1 auto;
+ width:100%;
+ min-height:0;
+ overflow-x:hidden;
+ overflow-y:auto;
+ -webkit-overflow-scrolling:touch;
+ overscroll-behavior-y:contain;
+ touch-action:pan-y;
+ padding:calc(22px + env(safe-area-inset-top,0px))
+  max(22px,env(safe-area-inset-right,0px))
+  22px max(22px,env(safe-area-inset-left,0px));
+ gap:18px;
+}
+.outcome-scroll>*{
+ width:100%;
+ max-width:740px;
+ margin-left:auto;
+ margin-right:auto;
+}
+.choice-outcome-sheet .outcome-footer{
+ flex:0 0 auto;
+ width:100%;
+ margin:0;
+ padding:16px max(22px,env(safe-area-inset-right,0px))
+  calc(18px + env(safe-area-inset-bottom,0px))
+  max(22px,env(safe-area-inset-left,0px));
+ border-top:1px solid #bbd5b865;
+ background:#0b2216fa;
+ box-shadow:0 -8px 26px #020b0770;
+ gap:9px;
+}
+.outcome-footer>*{width:100%;max-width:740px;margin-left:auto;margin-right:auto}
+.outcome-kicker{font-size:16px!important}
+.outcome-situation,.outcome-story{font-size:17px!important}
+.choice-outcome-sheet h2{font-size:clamp(30px,8vw,46px)!important}
+.outcome-main{font-size:clamp(18px,4.8vw,23px)!important}
+.outcome-section h3{font-size:18px!important}
+.outcome-effect span,.outcome-future span{font-size:16px!important}
+.outcome-effect b{font-size:25px!important}
+.outcome-empty{font-size:16px!important}
+.outcome-future b{font-size:14px!important}
+.outcome-rpg strong{font-size:17px!important}
+.outcome-rpg span{font-size:14px!important}
+.outcome-footer .outcome-continue{
+ min-height:66px!important;
+ font-size:19px!important;
+}
+.outcome-footer .outcome-auto{
+ font-size:14px!important;
+ line-height:1.4;
+ color:#d7eacb;
+}
+.outcome-auto span{
+ font-size:23px;
+ font-weight:950;
+ color:#b8f56d;
+ margin-right:6px;
+ vertical-align:middle;
+}
+@media(max-height:680px){
+ .choice-outcome-sheet .outcome-scroll{
+  align-content:start;
+  gap:13px;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));
+  padding-bottom:14px;
+ }
+ .choice-outcome-sheet .outcome-footer{
+  padding-top:10px;
+  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));
+ }
+ .outcome-footer .outcome-continue{min-height:53px!important}
+}
