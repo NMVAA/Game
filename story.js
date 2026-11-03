@@ -323,32 +323,59 @@ export function takeChoice(g,side){
  else if(id.startsWith('offer:')){
   const code=id.slice(6),offer=g.offers?.[0];
   if(offer){
-   if(code==='negotiate')result=negotiate(g,offer.id);
-   if(code==='reject')result=rejectOffer(g,offer.id);
+   if(code==='negotiate'){
+     result=negotiate(g,offer.id);
+     if(result.ok)remember(g,'agent','negotiation','Ти вимагав для себе кращі умови.',{trust:result.message?.includes('підвищен')?4:-3,loyalty:2});
+   }
+   if(code==='reject'){
+     remember(g,'agent','offer_rejected','Ти відхилив роботу агента.',{trust:-5,resentment:5});
+     result=rejectOffer(g,offer.id);
+   }
    if(code==='accept'){
-    result=acceptOffer(g,offer.id);
-    if(result.ok&&g.personal.personId)postpone(g,'move',2);
-    if(result.ok){stat(g,{stress:7});s.agentTrust=cap(s.agentTrust+3);}
+     const previousClub=g.clubId;
+     result=acceptOffer(g,offer.id);
+     if(result.ok){
+       remember(g,'agent','offer_signed','Агент допоміг підписати контракт.',{trust:7,loyalty:8});
+       remember(g,'coach','departure_'+previousClub,'Ти залишив команду.',{trust:-5,resentment:6});
+       if(g.personal.personId){postpone(g,'move',2);queueArc(g,'memoryRelocation',14,{actor:currentPartnerId(g)},'relocate-'+dateNum(g));}
+       stat(g,{stress:7});
+     }
    }
   }
   if(code==='negotiate')advance=false;
  }
  else if(id.startsWith('relation:')){
-  const action=id.slice(9);
-  if(['commit','live','marry'].includes(action))result=relationshipAction(g,action);
-  else if(action==='delay'||action==='separate'||action==='postpone'){social(g,{bond:-5,tension:7});stat(g,{stress:2});}
+   const action=id.slice(9);
+   if(['commit','live','marry'].includes(action)){
+     result=relationshipAction(g,action);
+     if(result.ok&&currentPartnerId(g)){
+       remember(g,currentPartnerId(g),'commit_'+action,'Ти погодився на спільний важливий крок.',{trust:8,loyalty:8,affinity:5});
+       if(makePromise(g,currentPartnerId(g),'shared-time','Проводити час разом навіть у насиченому сезоні.',6))
+         queueArc(g,'memoryPromise',6,{actor:currentPartnerId(g)},'partner-time-'+dateNum(g));
+     }
+   }else if(['delay','separate','postpone'].includes(action)){
+     social(g,{bond:-5,tension:7});stat(g,{stress:2});
+     if(currentPartnerId(g))remember(g,currentPartnerId(g),'delayed_commitment','Ти відклав важливе рішення.',{trust:-5,resentment:7});
+   }
  }
  else if(id==='date:dinner'){
    result=g.daily.social?{ok:true,message:'Сьогодні ви вже бачилися. Завтра буде новий шанс.'}:relationshipAction(g,'date');
+   if(result.ok&&currentPartnerId(g))remember(g,currentPartnerId(g),'shared_evening','Ти організував побачення.',{trust:4,affinity:6});
  }
- else if(id==='date:talk')result=g.daily.social?{ok:true,message:'Ви вже поговорили сьогодні. Не квап події.'}:relationshipAction(g,'talk');
+ else if(id==='date:talk'){
+   result=g.daily.social?{ok:true,message:'Ви вже поговорили сьогодні. Не квап події.'}:relationshipAction(g,'talk');
+   if(result.ok&&currentPartnerId(g))remember(g,currentPartnerId(g),'talked_honestly','Ти знайшов час для щирої розмови.',{trust:7,resentment:-4});
+ }
  else if(id==='intimacy:yes'){
   // Explicit mutual consent, off-screen intimacy, adult characters only.
   social(g,{bond:9,trust:3,tension:-4});stat(g,{energy:-8,morale:5});
   s.romanceHeat=cap(s.romanceHeat+9);
+  if(currentPartnerId(g))remember(g,currentPartnerId(g),'mutual_consent','Близькість була за взаємною згодою.',{trust:5,affinity:4});
   result={ok:true,message:'Ви провели близьку ніч разом за взаємною згодою.'};
  }
- else if(id==='intimacy:no'){social(g,{trust:5,tension:-2});stat(g,{energy:5});result={ok:true,message:'Особисті межі поважаються. Довіра зросла.'};}
+ else if(id==='intimacy:no'){social(g,{trust:5,tension:-2});stat(g,{energy:5});
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'respected_boundaries','Ти поділився своїми межами.',{trust:7,resentment:-3});
+   result={ok:true,message:'Особисті межі поважаються. Довіра зросла.'};}
  else if(id==='secret:accept'){
    social(g,{trust:-6,tension:4});
    stat(g,{energy:-10,morale:7,stress:8});
@@ -357,21 +384,28 @@ export function takeChoice(g,side){
    s.romanceHeat=cap(s.romanceHeat+8);
    postpone(g,'affairExposure',2+Math.floor(roll(g)*4));
    if(s.sponsor)postpone(g,'sponsorThreat',5);
+    if(currentPartnerId(g)){
+      remember(g,currentPartnerId(g),'secret_affair','Ти приховав від партнера зустріч з іншою дорослою людиною.',{trust:-11,resentment:16,loyalty:-10});
+      queueArc(g,'memoryRelationship',13,{actor:currentPartnerId(g)},'secret-'+dateNum(g));
+    }
    result={ok:true,message:'Взаємна близькість залишилася таємницею лише на деякий час.'};
  }
  else if(id==='secret:decline'){
    social(g,{trust:7,tension:-4});
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'rejected_secret','Ти відмовився від ризикованої зустрічі.',{trust:7,loyalty:9});
    stat(g,{morale:-2,stress:-3});
    result={ok:true,message:'Ти не порушив довіри партнера. Запрошення залишилося в минулому.'};
  }
  else if(id==='affair:confess'){
    setFlag(g,'secretLiaison',false);
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'affair_confessed','Ти зізнався у зраді; наслідки залишаються надовго.',{trust:-22,resentment:25,loyalty:-12});
    social(g,{trust:-23,bond:-16,tension:19});
    stat(g,{stress:17,morale:-9});
    s.scandal=cap(s.scandal-8);
    if(g.personal.bond<15){relationshipAction(g,'breakup');}
  }
  else if(id==='affair:deny'){
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'affair_denied','Ти продовжив приховувати правду.',{trust:-17,resentment:20});
    social(g,{trust:-16,tension:18});
    s.scandal=cap(s.scandal+15);
    postpone(g,'partnerDoubt',3);
@@ -389,10 +423,27 @@ export function takeChoice(g,side){
  else if(id==='jealousy:dodge'){social(g,{trust:-10,tension:14});postpone(g,'partnerDoubt',2);}
  else if(id==='fight:listen'){social(g,{trust:13,bond:5,tension:-19});stat(g,{stress:6});}
  else if(id==='fight:distance'){social(g,{trust:-11,bond:-12,tension:9});s.privacy=cap(s.privacy+6);if(g.personal.bond<15){result=relationshipAction(g,'breakup');}}
- else if(id==='captain:challenge'){stat(g,{morale:4,stress:5});s.clubTrust=cap(s.clubTrust-12);postpone(g,'mentor',3);}
- else if(id==='captain:private'){s.clubTrust=cap(s.clubTrust+8);stat(g,{morale:-2,reputation:1});}
- else if(id==='coach:stay'){s.clubTrust=cap(s.clubTrust+13);stat(g,{energy:-16,form:3});if(partner(g))social(g,{tension:6,bond:-3});}
- else if(id==='coach:leave'){s.clubTrust=cap(s.clubTrust-7);if(partner(g))social(g,{bond:8});else stat(g,{energy:5});}
+ else if(id==='captain:challenge'){stat(g,{morale:4,stress:5});s.clubTrust=cap(s.clubTrust-12);postpone(g,'mentor',3);
+   remember(g,'captain','public_clash','Ти публічно посварився з капітаном.',{trust:-13,resentment:19,loyalty:-5});
+   queueArc(g,'memoryTeam',9,{},'row-'+dateNum(g));}
+ else if(id==='captain:private'){s.clubTrust=cap(s.clubTrust+8);stat(g,{morale:-2,reputation:1});
+   remember(g,'captain','private_talk','Ти обрав приватну розмову.',{trust:11,loyalty:10,resentment:-8});
+   queueArc(g,'memoryOpportunity',12,{},'support-'+dateNum(g));}
+ else if(id==='coach:stay'){
+   stat(g,{energy:-16,form:3});
+   remember(g,'coach','extra_session','Ти залишився на додаткове тренування.',{trust:12,loyalty:9});
+   if(currentPartnerId(g)){
+     social(g,{tension:6,bond:-3});
+     if(makePromise(g,currentPartnerId(g),'shared-time','Провести обіцяний вечір разом.',3))
+       queueArc(g,'memoryPromise',3,{actor:currentPartnerId(g)},'promise-'+dateNum(g));
+   }else queueArc(g,'memoryOpportunity',9,{},'practice-'+dateNum(g));
+ }
+ else if(id==='coach:leave'){
+   remember(g,'coach','left_practice','Ти пропустив додаткову роботу заради особистих планів.',{trust:-10,resentment:9});
+   queueArc(g,'memorySelection',8,{},'lineup-'+dateNum(g));
+   if(currentPartnerId(g)){social(g,{bond:8});remember(g,currentPartnerId(g),'kept_date','Ти дотримав особистої домовленості.',{trust:8,affinity:6,loyalty:6});}
+   else stat(g,{energy:5});
+ }
  else if(id==='interview:open'){s.media=cap(s.media+12);s.privacy=cap(s.privacy-14);stat(g,{reputation:3,stress:3});if(roll(g)<.24)postpone(g,'agentLeak',3);}
  else if(id==='interview:quiet'){s.privacy=cap(s.privacy+6);s.media=cap(s.media-3);}
  else if(id==='agent:yes'){s.agentTrust=cap(s.agentTrust+12);s.agentDeal=true;stat(g,{stress:4});postpone(g,'agentLeak',3);}
