@@ -1,5 +1,11 @@
 # Game
 
+## Version 0.4.7 — Correct, anticipatory walking directions
+
+- Correct left/right turn prompts for the first-person camera coordinate system, so east/right no longer instructs a left turn.
+- Aim eight metres ahead along the *current mapped street* rather than skipping to the following waypoint; guidance now anticipates bends without telling players to turn prematurely.
+- Regression tests cover both turn directions, straight segments, approaching a corner and distance/progress at the destination. Refreshed the offline PWA cache.
+
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
 ## Version 0.4.6 — Reliable single-press jumping
