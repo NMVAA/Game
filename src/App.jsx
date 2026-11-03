@@ -8,6 +8,7 @@ import {npcSnapshot} from '../npc.js';
 import {adultSnapshot} from '../adult-life.js';
 import {artForScene,artUrl} from './scene-art.js';
 import {plotSnapshot} from '../plot-engine.js';
+import {rpgSnapshot} from '../rpg.js';
 import {captureOutcomeState,describeChoiceOutcome} from './outcome.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
@@ -122,11 +123,30 @@ function Meter({label,value,warn}){
  return <div className="meter"><div><small>{label}</small><b>{Math.round(clamp(value))}%</b></div><i><em style={{width:clamp(value)+'%',background:warn?'#f5a48f':'#b8f56d'}}/></i></div>;
 }
 function Journal({game,onClose}){
- const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game),adult=adultSnapshot(game),plots=plotSnapshot(game);
+ const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game),adult=adultSnapshot(game),plots=plotSnapshot(game),rpg=rpgSnapshot(game);
  return <motion.div className="journal-overlay" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}>
   <motion.section className="journal-panel" role="dialog" aria-modal="true" aria-label="Історія та наслідки" initial={{y:85}} animate={{y:0}} exit={{y:85}} transition={{type:'spring',stiffness:300,damping:28}} onClick={e=>e.stopPropagation()}>
     <div className="journal-title"><div><small>FOOTBALL LIFE</small><h2>Твої наслідки</h2></div><button type="button" onClick={onClose}>✕</button></div>
     <div className="journal-stats"><span>Рейтинг <b>{scorePlayer(game)}</b></span><span>Клуб <b>{Math.round(s.clubTrust)}%</b></span><span>Агент <b>{Math.round(s.agentTrust)}%</b></span><span>Скандали <b>{Math.round(s.scandal)}%</b></span></div>
+    <details className="rpg-details" open>
+      <summary>РОЗВИТОК ПЕРСОНАЖА <span>Рівень {rpg.level} · {rpg.xp}/{rpg.required} XP</span></summary>
+      <div className="rpg-hero">
+        <div><strong>LVL {rpg.level}</strong><small>Зароблено {rpg.totalXp} XP</small></div>
+        <div className="rpg-progress-track"><i style={{width:Math.min(100,rpg.xp/rpg.required*100)+'%'}}/></div>
+        {rpg.pending>0&&<p className="rpg-ready">Доступно {rpg.pending} виборів спеціалізації — повернися до свайп-картки.</p>}
+      </div>
+      <div className="rpg-stat-list">{rpg.attributes.map(attribute=>
+        <div className="rpg-stat" key={attribute.id}><span>{attribute.name}</span>
+          <div className="rpg-stat-track"><i style={{width:Math.min(100,attribute.value*10)+'%'}}/></div>
+          <b>{attribute.value}/10</b>
+        </div>)}</div>
+      <strong className="rpg-label">СПЕЦІАЛІЗАЦІЇ</strong>
+      <div className="rpg-perks">{rpg.perks.filter(perk=>perk.rank>0).length?
+        rpg.perks.filter(perk=>perk.rank>0).map(perk=>
+        <article key={perk.id}><b>{perk.name} · ранг {perk.rank}</b><p>{perk.description}</p></article>):
+        <p className="rpg-empty">Здобувай XP. На новому рівні вибереш одну з двох здібностей.</p>}</div>
+      <p className="rpg-check-total">Сюжетні перевірки: {rpg.passed}/{rpg.checks} успішних</p>
+    </details>
     <details className="plot-details" open>
      <summary>СЮЖЕТНІ ЛАНЦЮГИ <span>{plots.started}/{plots.total} розпочато · {plots.completed} завершено</span></summary>
      <div className="plot-list">
@@ -234,8 +254,13 @@ function SwipeCard({scene,onChoice}){
 }
 function Controls({game,scene,onChoice}){
  const match=scene.id==='match',step=match?(game.match?.turns||0):game.story.step,maximum=match?12:4;
+ const rpg=rpgSnapshot(game);
  return <div className="controls">
   <div className="progress"><span>{match?'МАТЧ':'ТВІЙ ДЕНЬ'}</span><div><i style={{width:Math.min(100,step/maximum*100)+'%'}}/></div><b>{Math.min(maximum,step+1)} / {maximum}</b></div>
+  <div className="rpg-hud"><b>LVL {rpg.level}</b><div><i style={{width:Math.min(100,rpg.xp/rpg.required*100)+'%'}}/></div>
+    <small>{rpg.xp}/{rpg.required} XP</small>
+    {rpg.pending>0&&<span>НОВА ЗДІБНІСТЬ</span>}
+  </div>
   <div className="meters"><Meter label="ЕНЕРГІЯ" value={game.energy}/><Meter label="РЕПУТАЦІЯ" value={game.reputation}/><Meter label="ДОВІРА" value={game.personal.personId?game.personal.trust:game.story.clubTrust}/><Meter label="СТРЕС" value={game.stress} warn/></div>
   <div className="swipe-instructions"><span>← ПРОВЕДИ ЛІВОРУЧ</span><span>ПРОВЕДИ ПРАВОРУЧ →</span></div>
   <div className="choices">
@@ -256,6 +281,17 @@ function ChoiceOutcome({outcome,onContinue}){
    <p className="outcome-situation">{outcome.context}</p>
    <h2>{outcome.choice}</h2>
    <div className="outcome-main">{outcome.message}</div>
+   {(outcome.rpgXp||outcome.rpgCheck||outcome.rpgPerk)&&
+    <section className="outcome-rpg" aria-label="RPG результати">
+      {outcome.rpgXp&&<div className="outcome-rpg-xp"><strong>+{outcome.rpgXp.amount} XP</strong>
+        <span>Рівень {outcome.rpgXp.level}{outcome.rpgXp.raised>0?' · РІВЕНЬ ПІДВИЩЕНО!':''}</span></div>}
+      {outcome.rpgCheck&&<div className={'outcome-rpg-check '+(outcome.rpgCheck.success?'pass':'fail')}>
+        <strong>{outcome.rpgCheck.success?'ПЕРЕВІРКУ ПРОЙДЕНО':'ПЕРЕВІРКУ НЕ ПРОЙДЕНО'}</strong>
+        <span>{outcome.rpgCheck.attributeName} · шанс {outcome.rpgCheck.odds}%</span></div>}
+      {outcome.rpgPerk&&<div className="outcome-rpg-perk">
+        <strong>ЗДІБНІСТЬ ВІДКРИТО: {outcome.rpgPerk.name}</strong>
+        <span>Ранг {outcome.rpgPerk.rank} · {outcome.rpgPerk.attribute} +1</span></div>}
+    </section>}
    <section className="outcome-section" aria-label="Зміни показників">
     <h3>Що змінилося</h3>
     {changes.length?
