@@ -182,7 +182,7 @@ export function beginMatch(g){
   // This reflects persistent NPC state, not only the player's direct choices.
   const rival=g.story?.npcs?.people?.rival;
   const coachTrust=g.story?.memory?.actors?.coach?.trust??55;
-  const competitiveBench=(rival?.goalProgress??0)>=76 && coachTrust<66;
+  const competitiveBench=rival?.clubId===g.clubId && (rival?.goalProgress??0)>=76 && coachTrust<66;
   const bench=access?.benchRisk||competitiveBench?45:0;
   g.match={...fixture,turns:0,minute:bench,startingMinute:bench,turnLimit:bench?6:12,
     homeGoals:0,awayGoals:0,goals:0,assists:0,actions:0,
@@ -200,7 +200,8 @@ export function matchAction(g,action){
   const coach=g.story?.memory?.actors?.coach,captain=g.story?.memory?.actors?.captain;
   const chemistry=(coach?(coach.trust-50)/430-(coach.resentment||0)/900:0)
     +(captain?(captain.loyalty-10)/550-(captain.resentment||0)/1050:0);
-  const rivalPressure=(g.story?.npcs?.people?.rival?.goalProgress??0)/1200;
+  const rivalActor=g.story?.npcs?.people?.rival;
+  const rivalPressure=rivalActor?.clubId===g.clubId?(rivalActor.goalProgress??0)/1200:0;
   const quality=clamp((g.form-50)/210+condition/4+chemistry-rivalPressure,-.24,.28);
   let line='';
   const scoring=(base)=>chance(g)<clamp(base+(scorePlayer(g)-opp)/220+quality,.03,.66);
