@@ -178,12 +178,17 @@ export function beginMatch(g){
   if(g.day!==6||g.match)return {ok:false,message:'Матч доступний у неділю.'};
   const fixture=currentFixture(g);if(!fixture)return {ok:false,message:'Не знайдено матч.'};
   const access=g.story?.memory?careerAccess(g):null;
-  const bench=access?.benchRisk?45:0;
+  // A rival who trained independently can win the coach's confidence.
+  // This reflects persistent NPC state, not only the player's direct choices.
+  const rival=g.story?.npcs?.people?.rival;
+  const coachTrust=g.story?.memory?.actors?.coach?.trust??55;
+  const competitiveBench=(rival?.goalProgress??0)>=76 && coachTrust<66;
+  const bench=access?.benchRisk||competitiveBench?45:0;
   g.match={...fixture,turns:0,minute:bench,startingMinute:bench,turnLimit:bench?6:12,
     homeGoals:0,awayGoals:0,goals:0,assists:0,actions:0,
     rating:6.0,ball:{x:50,y:50},
-    feed:[bench?'Тренер пам’ятає конфлікт: сьогодні ти виходиш лише після перерви.':'Свисток! Твоя кар’єра — у твоїх рішеннях.'],
-    last:bench?'Ти на лаві запасних, поки тренер не довіряє.':'Початок матчу'};
+    feed:[bench?'Тренер обрав конкурента: сьогодні ти виходиш лише після перерви.':'Свисток! Твоя кар’єра — у твоїх рішеннях.'],
+    last:bench?'Ти на лаві запасних: тренер і конкурент вплинули на стартовий склад.':'Початок матчу'};
   return {ok:true,message:'Матч розпочато. Обирай дію на полі.'};
 }
 export function matchAction(g,action){
@@ -195,7 +200,8 @@ export function matchAction(g,action){
   const coach=g.story?.memory?.actors?.coach,captain=g.story?.memory?.actors?.captain;
   const chemistry=(coach?(coach.trust-50)/430-(coach.resentment||0)/900:0)
     +(captain?(captain.loyalty-10)/550-(captain.resentment||0)/1050:0);
-  const quality=clamp((g.form-50)/210+condition/4+chemistry,-.24,.28);
+  const rivalPressure=(g.story?.npcs?.people?.rival?.goalProgress??0)/1200;
+  const quality=clamp((g.form-50)/210+condition/4+chemistry-rivalPressure,-.24,.28);
   let line='';
   const scoring=(base)=>chance(g)<clamp(base+(scorePlayer(g)-opp)/220+quality,.03,.66);
   if(action==='pass'){
