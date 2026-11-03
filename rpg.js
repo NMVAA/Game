@@ -61,8 +61,8 @@ export function awardXp(g,amount,reason){
 }
 function perkOptions(g){
  const r=initRpg(g);
- if(r.offered?.length===2&&r.offered.every(id=>perkRank(g,id)<3))return r.offered;
- const available=RPG_PERKS.filter(p=>perkRank(g,p.id)<3);
+ if(r.offered?.length===2&&r.offered.every(id=>perkRank(g,id)<10))return r.offered;
+ const available=RPG_PERKS.filter(p=>perkRank(g,p.id)<10);
  const start=(r.level*2+Math.floor(r.totalXp/100))%available.length;
  const first=available[start],second=available[(start+1)%available.length];
  r.offered=[first.id,second.id];
@@ -83,7 +83,7 @@ export function perkLevelScene(g){
 }
 export function choosePerk(g,id){
  const r=initRpg(g),perkId=id.slice(4),def=perkById[perkId];
- if(r.pendingLevelUps<=0||!def||!perkOptions(g).includes(perkId)||perkRank(g,perkId)>=3)
+ if(r.pendingLevelUps<=0||!def||!perkOptions(g).includes(perkId)||perkRank(g,perkId)>=10)
   return {ok:false,message:'Цю спеціалізацію зараз обрати неможливо.'};
  r.perks[perkId]=perkRank(g,perkId)+1;
  r.attributes[def.attribute]=Math.min(10,(r.attributes[def.attribute]||2)+1);
@@ -122,7 +122,7 @@ export function previewRpgCheck(g,plotKey,step,side=0){
  if(step!==2&&step!==4)return null;
  const attribute=RPG_CHECK_MAP[plotKey]||'insight';
  const attr=attrById[attribute];
- const hard=(step===4?.13:.055)+(side===1?.05:0);
+ const hard=(step===4 ? .13 : .055)+(side===1 ? .05 : 0);
  const odds=skillChance(g,attribute,hard);
  return {attribute,attributeName:attr.name,odds:Math.round(odds*100),chance:odds};
 }
