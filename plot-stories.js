@@ -183,7 +183,7 @@ export const PLOT_LIBRARY=[
    C('Порадити йти до межі','+авторитет у фанатів, ризик повторення',{g:{reputation:2,stress:4},m:[mem('coach',{trust:-5})],q:{kind:'rehab',days:14}},'Молодий гравець побачив твою рішучість, але тренер хвилюється за команду.'),'training')
  ]},
 {
- id:'truth',name:'Ціна правди',category:'Преса · партнер · бренд',art:'press',
+ id:'truth',name:'Ціна правди',category:'Преса · партнер · бренд',art:'press',requiresPartner:true,
  ending:['Ти контролюєш власну історію','Скандал пережив своїх героїв'],
  beats:[
   B('Повідомлення від журналістки',
