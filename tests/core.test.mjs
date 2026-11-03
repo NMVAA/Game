@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseMap,project,findRoute,chooseMission,nearestNode,createState,spawnAt,stepVehicle,collisionAt,SpatialGrid,inside,nearestPoint,seeded} from '../src/core.mjs';
+import {parseMap,project,findRoute,chooseMission,nearestNode,createState,spawnAt,stepVehicle,collisionAt,vehicleHullCollision,SpatialGrid,inside,nearestPoint,seeded} from '../src/core.mjs';
 import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker} from '../src/walking.mjs';
 function fixture(){const elements=[],n=7;for(let j=0;j<n;j++)for(let i=0;i<n;i++)elements.push({type:'node',id:1+j*n+i,lon:34.09+i*.0017,lat:47.648+j*.0013});for(let i=0;i<n;i++){elements.push({type:'way',id:100+i,nodes:Array.from({length:n},(_,j)=>1+j*n+i),tags:{highway:'residential',name:'Тестова вертикаль'}});elements.push({type:'way',id:200+i,nodes:Array.from({length:n},(_,j)=>1+i*n+j),tags:{highway:'residential',name:'Тестова горизонталь'}});}return{elements};}
 function flat(){const obstacles=new SpatialGrid(),roadGrid=new SpatialGrid();roadGrid.insert({a:{x:0,z:-5000},b:{x:0,z:5000},road:{width:100,drive:true}},-50,-5000,50,5000);return{obstacles,roadGrid,bounds:{minX:-5000,minZ:-5000,maxX:5000,maxZ:5000}};}
@@ -16,6 +16,18 @@ test('throttle accelerates and consumes fuel without teleporting',()=>{const w=f
 test('braking reduces forward speed, then permits reversing',()=>{const w=flat(),s=createState();s.vz=20;s.speed=20;for(let i=0;i<90;i++)stepVehicle(s,{brake:true},1/60,w);assert.ok(s.speed<1);for(let i=0;i<90;i++)stepVehicle(s,{brake:true},1/60,w);assert.ok(s.speed<-.5);});
 test('steering works with stable fixed timestep and remains finite',()=>{const w=flat(),s=createState();for(let i=0;i<300;i++)stepVehicle(s,{gas:true,steer:.65},1/60,w);assert.ok(Math.abs(s.x)>1);assert.ok(Number.isFinite(s.angle));assert.ok(s.angle<0);});
 test('swept collision prevents fast car tunnelling through building',()=>{const w=flat();wall(w);const s=createState();s.z=16;s.vz=39;s.speed=39;for(let i=0;i<30;i++)stepVehicle(s,{gas:true},1/60,w);assert.ok(s.z<20);assert.ok(s.health<100);assert.ok(s.hits>0);});
+test('door-side collisions stop lateral clipping and apply speed-based damage',()=>{
+  const w=flat(),b={minX:1.9,maxX:3.1,minZ:-.2,maxZ:.2};
+  b.poly=[{x:1.9,z:-.2},{x:3.1,z:-.2},{x:3.1,z:.2},{x:1.9,z:.2}];
+  w.obstacles.insert(b,b.minX,b.minZ,b.maxX,b.maxZ);
+  assert.equal(vehicleHullCollision(w,{x:0,z:0},0),null);
+  assert.equal(vehicleHullCollision(w,{x:.85,z:0},0),b);
+  const s=createState();s.x=.65;s.vx=16;s.angle=0;
+  stepVehicle(s,{},1/60,w);
+  assert.equal(s.x,.65,'lateral motion must stop before the obstacle reaches the doors');
+  assert.equal(s.hits,1);
+  assert.ok(s.health<100,'a sideways impact must damage the car even at zero forward speed');
+});
 test('empty fuel or broken car cannot accelerate',()=>{for(const key of ['fuel','health']){const w=flat(),s=createState({[key]:0});for(let i=0;i<120;i++)stepVehicle(s,{gas:true},1/60,w);assert.equal(s.z,0);}});
 test('save migration sanitizes numbers and preserves progress',()=>{const s=createState({fuel:42,money:600,goal:3,health:999,engine:90,tires:-4,travel:'bad'});assert.equal(s.fuel,42);assert.equal(s.money,600);assert.equal(s.goal,3);assert.equal(s.health,100);assert.equal(s.engine,3);assert.equal(s.tires,0);assert.equal(s.travel,0);});
 test('rescue reset preserves fuel, damage and money',()=>{const s=createState({fuel:41,health:62,money:500});spawnAt(s,{x:10,z:20,angle:1});assert.equal(s.x,10);assert.equal(s.fuel,41);assert.equal(s.health,62);assert.equal(s.money,500);});

@@ -1,5 +1,5 @@
 /** Deterministic game logic; no browser or Three.js dependency. Metres and seconds. */
-export const VERSION = '0.4.3';
+export const VERSION = '0.4.4';
 export const ORIGIN = [47.653, 34.094];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const finite = (v, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
@@ -173,6 +173,15 @@ export function collisionAt(world,p,radius=1.15) {
   }
   return null;
 }
+/** Overlapping disks cover the car's nose, doors and rear (metres).
+ * Endpoint-only probes missed narrow obstacles along the doors.
+ */
+export function vehicleHullCollision(world, p, angle) {
+  const fx=Math.sin(angle)*1.05, fz=Math.cos(angle)*1.05;
+  return collisionAt(world,p,1.15) ||
+    collisionAt(world,{x:p.x+fx,z:p.z+fz},1.15) ||
+    collisionAt(world,{x:p.x-fx,z:p.z-fz},1.15);
+}
 export function stepVehicle(s, input, dt, world) {
   dt = clamp(finite(dt),0,1/30); if (!dt) return;
   const road = closestRoad(world,s,24); s.road = !!road && road.distance < road.road.width*.5+1;
@@ -199,9 +208,10 @@ export function stepVehicle(s, input, dt, world) {
   const oldX=s.x,oldZ=s.z,dx=s.vx*dt,dz=s.vz*dt,steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.45));
   s.collisionCooldown=Math.max(0,s.collisionCooldown-dt);
   for (let i=0;i<steps;i++) {
-    const next={x:s.x+dx/steps,z:s.z+dz/steps},f={x:Math.sin(s.angle)*1.05,z:Math.cos(s.angle)*1.05};
-    if (collisionAt(world,{x:next.x+f.x,z:next.z+f.z})||collisionAt(world,{x:next.x-f.x,z:next.z-f.z})) {
-      if (!s.collisionCooldown&&Math.abs(forward)>2) { s.health=clamp(s.health-Math.abs(forward)*.85,0,100);s.hits++;s.collisionCooldown=.6; }
+    const next={x:s.x+dx/steps,z:s.z+dz/steps};
+    if (vehicleHullCollision(world,next,s.angle)) {
+      const impactSpeed=Math.hypot(s.vx,s.vz);
+      if (!s.collisionCooldown&&impactSpeed>2) { s.health=clamp(s.health-impactSpeed*.85,0,100);s.hits++;s.collisionCooldown=.6; }
       s.vx*=-.18;s.vz*=-.18;forward*= -.18;break;
     }
     s.x=next.x;s.z=next.z;

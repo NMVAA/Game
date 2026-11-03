@@ -2,6 +2,12 @@
 
 A mobile-first Three.js driving game on an OpenStreetMap street network of Pokrov, Dnipropetrovsk oblast, Ukraine. Public site: https://nmvaa.github.io/Game/
 
+## Version 0.4.4 — Full-width vehicle collision and sideways crash damage
+
+- Extend swept car collisions from front/rear probes to three overlapping footprint circles. Narrow objects beside a door can no longer pass through the middle of the vehicle.
+- Compute collision damage from total planar impact speed instead of forward speed alone, so high-speed lateral slides and handbrake incidents also damage the car.
+- Add regression coverage for side-door contact and lateral impact damage; update the versioned offline PWA cache.
+
 ## Version 0.4.3 — Faster street-network navigation
 
 - Replaced the linear-scan A* frontier for driving routes with a binary min-heap. Large OSM road graphs require fewer operations during trip planning and rerouting, improving mobile responsiveness.
