@@ -1,5 +1,11 @@
 # Game
 
+## Version 0.5.1 — Pedestrian route safety for visual-study scenery
+
+- Exclude all authentic OSM walkways and roadways when placing illustrative structures or canopy trees; the new visual layer must not obstruct the school walking route.
+- Update the installed PWA cache to deliver the corrected layer on Android.
+
+
 ## Version 0.5.0 — Photo-referenced Centralna 59 district study
 
 - Inspected the actual mobile Chromium screenshot and the packaged OSM geometry. The source snapshot had almost no mapped features within roughly 250 m of the approximate house 59 anchor, explaining the large empty foreground.
