@@ -3,6 +3,7 @@ import {T,setupScene,buildWorld,makeCar,makeBeacon} from './world.mjs';
 import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker,walkPadAxes} from './walking.mjs';
 import {buildNeighborhoodRoute,routeProgress,startNearHouse59} from './neighborhood.mjs';
 import {makeNeighborhoodOverlay} from './neighborhood-scene.mjs';
+import {connectFootRoute} from './foot-connector.mjs';
 const $=id=>document.getElementById(id), canvas=$('scene'), ui={speed:$('speed'),gear:$('gear'),fuel:$('fuel'),health:$('health'),funds:$('funds')};
 const engine=setupScene(canvas),{renderer,scene,camera}=engine;
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('game-save-v2')||localStorage.getItem('pokrov-save-v1')||'{}');}catch{return {};}})();
@@ -187,6 +188,15 @@ async function load(){ready=false;$('start').disabled=true;$('retry').hidden=tru
     if(neighborhood){
       const spot=startNearHouse59(world,neighborhood);
       neighborhood.startSpot=spot;
+      const connector=connectFootRoute(world,spot.walker,neighborhood.route);
+      if(connector){
+        neighborhood.connector=connector;
+        neighborhood.originalStartOffset=neighborhood.startOffset;
+        neighborhood.route=[...connector.points.slice(0,-1),...neighborhood.route];
+        neighborhood.start=neighborhood.route[0];
+        neighborhood.length+=connector.length;
+        neighborhood.startOffset=0;
+      }
       spawnAt(state,spot.car);
     }else spawnAt(state,world.spawn);
     neighborhoodView=makeNeighborhoodOverlay(scene,world,neighborhood,data);
@@ -204,5 +214,5 @@ async function load(){ready=false;$('start').disabled=true;$('retry').hidden=tru
   }catch(error){console.error(error);$('loadstatus').textContent=error.name==='AbortError'?'Сервер карти не відповів. Повтори завантаження.':error.message+' Вигадану карту не підставлено.';$('retry').hidden=false;$('start').textContent='КАРТА НЕ ГОТОВА';$('mapstate').textContent='ПОМИЛКА КАРТИ';}}
 $('retry').onclick=()=>location.reload();$('start').onclick=()=>{if(!ready)return;started=true;paused=false;$('boot').hidden=true;$('hud').hidden=false;audioStart();clearInput();updateHud();};
 if('serviceWorker'in navigator&&isSecureContext){navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});if(reg.waiting)notice('Є нова версія. Перезавантаж Game.');}).catch(e=>console.warn('PWA cache unavailable',e));}
-if(new URLSearchParams(location.search).has('test'))window.__GAME_TEST__={get ready(){return ready;},get paused(){return paused;},get state(){return {...state};},get walker(){return {...walker};},get inCar(){return inCar;},get render(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles};},get map(){return world?{roads:world.roads.length,buildings:world.buildings.length,nodes:world.component.length}:null;},get landscape(){return worldView?.landscape??null;},get tour(){return neighborhood?{length:neighborhood.length,startOffset:neighborhood.startOffset,endOffset:neighborhood.endOffset,points:neighborhood.route.length,precision:neighborhood.home.precision,type:neighborhood.routeType,spawnDistance:neighborhood.startSpot?.distanceToHome,spawnSource:neighborhood.startSpot?.source,home:neighborhood.home}:null;}};
+if(new URLSearchParams(location.search).has('test'))window.__GAME_TEST__={get ready(){return ready;},get paused(){return paused;},get state(){return {...state};},get walker(){return {...walker};},get inCar(){return inCar;},get render(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles};},get map(){return world?{roads:world.roads.length,buildings:world.buildings.length,nodes:world.component.length}:null;},get landscape(){return worldView?.landscape??null;},get tour(){return neighborhood?{length:neighborhood.length,startOffset:neighborhood.startOffset,endOffset:neighborhood.endOffset,connectorLength:neighborhood.connector?.length??0,points:neighborhood.route.length,precision:neighborhood.home.precision,type:neighborhood.routeType,spawnDistance:neighborhood.startSpot?.distanceToHome,spawnSource:neighborhood.startSpot?.source,home:neighborhood.home}:null;}};
 requestAnimationFrame(frame);load();
