@@ -235,7 +235,7 @@ export function npcSnapshot(g){
  const w=initNpcWorld(g);
  return {
   people:Object.values(w.people).map(p=>({id:p.id,name:p.name,age:p.age,role:p.role,trait:p.trait,goal:p.goal,
-   motivation:Math.round(p.motivation),last:p.lastDecision,city:p.targetCity||CLUB_BY_ID[p.clubId]?.city||''})),
+   motivation:Math.round(p.motivation),last:p.history?.[0]?.description||null,city:p.targetCity||CLUB_BY_ID[p.clubId]?.city||''})),
   news:w.news.slice(0,15),rumors:w.transferRumors.slice(0,5),
   partner:g.personal?.personId||null,
   changes:w.moves
