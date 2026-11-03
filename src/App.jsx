@@ -4,6 +4,7 @@ import {CLUBS,CLUB_BY_ID,POSITIONS,formatCash} from '../data.js';
 import {loadGame,saveGame,gameClock,scorePlayer} from '../engine.js';
 import {ensureStory,getScene,makeCareer,takeChoice} from '../story.js';
 import {memorySummary} from '../memory.js';
+import {npcSnapshot} from '../npc.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
 const kinds={
@@ -13,7 +14,11 @@ const kinds={
  photo:'media',public:'media',publicity:'media',interview:'media',sponsorThreat:'media',nightlife:'night',recovery:'night',
  memoryBoard:'contract',memoryEvidence:'media',memoryAgent:'contract',memoryPromise:'romance',memorySelection:'stadium',
  memoryTeam:'stadium',memoryRelationship:'romance',rememberedHurt:'romance',memoryRelocation:'romance',
- memoryOpportunity:'stadium',agentFreeze:'contract'
+ memoryOpportunity:'stadium',agentFreeze:'contract',
+ npcCoachContest:'stadium',npcCoachPromotion:'stadium',npcCoachDrill:'stadium',
+ npcAgentSecret:'contract',npcAgentContact:'contract',npcCaptainAlliance:'stadium',npcTeamBond:'stadium',
+ npcRivalCompetition:'stadium',npcRivalTransfer:'contract',npcPartnerDistance:'romance',
+ npcPartnerCareer:'romance',npcPartnerPlans:'romance'
 };
 const palettes={
  stadium:['#193d31','#b8f56d','#0e271d'],
@@ -100,7 +105,7 @@ function Meter({label,value,warn}){
  return <div className="meter"><div><small>{label}</small><b>{Math.round(clamp(value))}%</b></div><i><em style={{width:clamp(value)+'%',background:warn?'#f5a48f':'#b8f56d'}}/></i></div>;
 }
 function Journal({game,onClose}){
- const s=ensureStory(game),mem=memorySummary(game);
+ const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game);
  return <motion.div className="journal-overlay" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}>
   <motion.section className="journal-panel" role="dialog" aria-modal="true" aria-label="Історія та наслідки" initial={{y:85}} animate={{y:0}} exit={{y:85}} transition={{type:'spring',stiffness:300,damping:28}} onClick={e=>e.stopPropagation()}>
     <div className="journal-title"><div><small>FOOTBALL LIFE</small><h2>Твої наслідки</h2></div><button type="button" onClick={onClose}>✕</button></div>
@@ -115,6 +120,18 @@ function Journal({game,onClose}){
       </div>
       {mem.promises.length>0&&<div className="memory-promises"><strong>НЕВИКОНАНІ ОБІЦЯНКИ</strong>{mem.promises.map(p=><p key={p.id}>{p.label}: {p.text}</p>)}</div>}
       <div className="memory-access"><span>Тренер: {mem.access.selection}</span><span>Агент: {mem.access.agentStatus}</span></div>
+    </details>
+    <details className="npc-details">
+      <summary>ЖИВИЙ СВІТ <span>{world.news.length} останніх дій NPC</span></summary>
+      <div className="npc-characters">
+        {world.people.filter(p=>p.role==='coach'||p.role==='agent'||p.role==='captain'||p.role==='rival'||(p.role==='social'&&p.id==='social:'+world.partner)).map(p=>
+         <article className="npc-person" key={p.id}>
+          <div><b>{p.name}</b><small>{({coach:'Тренер',agent:'Агент',captain:'Капітан',rival:'Конкурент',social:'Партнер'})[p.role]||p.role} · {p.age} років</small></div>
+          <p>Мета: {({ 'league-success':'Результат команди','higher-fees':'Вигідні контракти','dressing-room':'Єдність команди','starting-eleven':'Потрапити до основи','architecture':'Архітектурна кар’єра','music':'Музична кар’єра','business':'Власний бізнес','creative-work':'Творча кар’єра'})[p.goal]||p.goal}</p>
+          <span>{p.last?'Остання дія: '+p.last:'Поки планує наступні кроки'}</span>
+         </article>)}
+      </div>
+      <div className="npc-news">{world.news.slice(0,7).map((entry,i)=><div key={i}><small>Ігровий день {entry.day}</small><p>{entry.text}</p></div>)}</div>
     </details>
     <div className="journal-scroll">{s.journal?.length?s.journal.map((entry,i)=><article key={i}><small>{entry.day}</small><b>{entry.choice}</b><p>{entry.outcome}</p></article>):<p>Перше рішення ще попереду.</p>}</div>
     <p className="journal-note">Рішення можуть мати наслідки через кілька ігрових днів. Усі романтичні персонажі — дорослі 21+.</p>
@@ -222,6 +239,9 @@ export default function App(){
  const timeout=useRef(null);
  const lastChoice=useRef(0);
  const scene=useMemo(()=>game?getScene(game):null,[game,revision]);
+ // getScene advances autonomous plans by in-game days; persist them even if
+ // the player closes the PWA before making the next decision.
+ useEffect(()=>{if(game&&scene)saveGame(game);},[game,revision,scene]);
  const sceneKey=game&&scene?[game.season,game.week,game.day,game.story?.step,game.match?.turns||0,scene.id,revision].join('-'):'intro';
  const flash=useCallback(message=>{setNotice(message);clearTimeout(timeout.current);timeout.current=setTimeout(()=>setNotice(''),2100);},[]);
  const decide=useCallback(side=>{
