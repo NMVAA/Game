@@ -1,0 +1,20 @@
+{
+  "id": "/Game/",
+  "name": "Football Life",
+  "short_name": "Football Life",
+  "description": "Футбольна кар’єра та особисте життя 21+",
+  "lang": "uk",
+  "start_url": "/Game/",
+  "scope": "/Game/",
+  "display": "standalone",
+  "background_color": "#08130e",
+  "theme_color": "#08130e",
+  "icons": [
+    {
+      "src": "/Game/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
