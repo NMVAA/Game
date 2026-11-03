@@ -249,6 +249,11 @@ function SwipeCard({scene,onChoice}){
      {scene.plot&&<div className="plot-chapter"><span>{scene.plot.phase}</span>
        <b>{scene.plot.name} · {scene.plot.chapter}/{scene.plot.total}</b>
      </div>}
+     {scene.rpgLevel&&<div className="rpg-level-banner">
+       <strong>ПІДВИЩЕННЯ РІВНЯ · LVL {scene.rpgLevel.level}</strong>
+       <span>Ліворуч: {scene.rpgLevel.left}</span>
+       <span>Праворуч: {scene.rpgLevel.right}</span>
+     </div>}
      <div className="scenario-tag">{scene.tag}<span>21+</span></div><h1>{scene.title}</h1><p className={scene.major?'long':''}>{scene.text}</p></div>
  </motion.div>;
 }
