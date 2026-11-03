@@ -78,3 +78,37 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 @media(max-height:590px){.stage{min-height:150px}.controls{padding:7px 10px calc(7px + env(safe-area-inset-bottom,0px))}.meter>div{flex-direction:row;justify-content:space-between}.meter strong{font-size:11px}.meters{gap:3px}.meter{padding:5px 4px}.swipe-instructions{display:none}.choice{min-height:67px}.choice strong{font-size:11px}.choice small{font-size:9px}.scenario-copy{max-height:85%;padding:8px 15px}.scenario-copy h1{font-size:22px;margin:0}.scenario-copy p{font-size:12px}.scenario-tag{font-size:9px}}
 @media(max-width:370px){.brand-info small{font-size:8px}.cash{font-size:10px;padding:7px}.controls{padding-left:9px;padding-right:9px}.meters{gap:3px}.meter{padding:6px 5px}.meter small{font-size:7px}.choice{padding:10px;gap:4px}.choice small{font-size:10px}.swipe-instructions{font-size:8px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+
+
+/* Version 4: Persistent character memory in the optional in-game journal. */
+.memory-details{
+  flex:none;max-height:min(43dvh,375px);overflow:auto;overscroll-behavior:contain;
+  border:1px solid #6a836552;background:#101f17;border-radius:13px;
+  margin:0 0 11px;padding:0 12px 9px;
+}
+.memory-details summary{cursor:pointer;position:sticky;top:0;z-index:1;display:flex;gap:9px;
+  flex-wrap:wrap;align-items:center;justify-content:space-between;padding:13px 2px;
+  font-size:11px;letter-spacing:.5px;font-weight:900;color:#c8f49e;background:#101f17}
+.memory-details summary span{font-size:9px;font-weight:600;color:#9fb99f;letter-spacing:0}
+.memory-actors{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px}
+.memory-actor{min-width:0;border:1px solid #ffffff19;background:#223a2b94;border-radius:10px;padding:10px}
+.memory-actor>div{display:flex;flex-direction:column;gap:4px}
+.memory-actor b{font-size:12px;color:#edf5e9}
+.memory-actor span{font-size:10px;color:#b8d5b3}
+.memory-actor p{margin:7px 0 0;color:#d2ded0;font-size:10px;line-height:1.45}
+.memory-promises{margin:10px 0;border-top:1px solid #ffffff24;padding-top:10px}
+.memory-promises strong{color:#f3d29d;letter-spacing:.7px;font-size:10px}
+.memory-promises p{font-size:11px;line-height:1.5;color:#dfded4;margin:6px 0}
+.memory-access{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 0}
+.memory-access span{padding:8px;background:#2e4732;font-size:10px;border-radius:8px;color:#dfefda;line-height:1.3}
+.journal-scroll{min-height:0}
+@media(max-height:650px){
+  .memory-details{max-height:31dvh}
+  .memory-actors{grid-template-columns:1fr 1fr}
+  .memory-actor{padding:7px}
+  .memory-actor p{font-size:9px}
+}
+@media(max-width:380px){
+  .memory-actors{grid-template-columns:1fr}
+  .memory-details{max-height:41dvh}
+}
