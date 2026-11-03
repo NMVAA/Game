@@ -6,9 +6,10 @@ import {ensureStory,getScene,makeCareer,takeChoice} from '../story.js';
 import {memorySummary} from '../memory.js';
 import {npcSnapshot} from '../npc.js';
 import {adultSnapshot} from '../adult-life.js';
+import {artForScene,artUrl} from './scene-art.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
-const HERO_ART=import.meta.env.BASE_URL+'art/football-life-hero.webp';
+const HERO_ART=artUrl('stadium_tunnel');
 const kinds={
  training:'stadium','training-rest':'stadium',match:'stadium',waiting:'stadium',captain:'stadium',coach:'stadium',mentor:'stadium',rehab:'stadium',
  offer:'contract',agentDeal:'contract',agentLeak:'contract',sponsor:'contract',sponsorIntro:'contract',investment:'contract',move:'contract',
@@ -173,6 +174,7 @@ function SwipeCard({scene,onChoice}){
  const right=useTransform(x,[0,45,210],[0,.04,1]);
  const lock=useRef(false);
  const kind=toneFor(scene);
+ const artwork=artForScene(scene,kind);
  const choose=useCallback(side=>{
   if(lock.current)return;
   lock.current=true;
@@ -191,9 +193,9 @@ function SwipeCard({scene,onChoice}){
  return <motion.div className={'scene-card tone-'+kind} drag="x" dragConstraints={{left:0,right:0}} dragElastic={.86} dragMomentum={false} onDragEnd={endDrag}
    style={{x,rotate,scale}} initial={{opacity:0,y:15}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:.94}} transition={{duration:.2}}>
    <Artwork kind={kind} match={scene.id==='match'}/>
-   {kind!=='stadium'&&<div className={'scene-photo scene-photo-'+kind} aria-hidden="true">
-     <img src={HERO_ART} alt="" draggable={false}/>
-   </div>}
+   <div className={'scene-photo scene-photo-'+kind+' scene-art-'+artwork} aria-hidden="true">
+     <img src={artUrl(artwork)} alt="" draggable={false} loading="eager" decoding="async"/>
+   </div>
    <motion.div className="drag-choice left" style={{opacity:left}}><span>← ОБРАНО</span><b>{scene.a.label}</b></motion.div>
    <motion.div className="drag-choice right" style={{opacity:right}}><span>ОБРАНО →</span><b>{scene.b.label}</b></motion.div>
    <div className="scenario-copy"><div className="scenario-tag">{scene.tag}<span>21+</span></div><h1>{scene.title}</h1><p className={scene.major?'long':''}>{scene.text}</p></div>
