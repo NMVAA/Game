@@ -8,6 +8,7 @@ import {npcSnapshot} from '../npc.js';
 import {adultSnapshot} from '../adult-life.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
+const HERO_ART=import.meta.env.BASE_URL+'art/football-life-hero.webp';
 const kinds={
  training:'stadium','training-rest':'stadium',match:'stadium',waiting:'stadium',captain:'stadium',coach:'stadium',mentor:'stadium',rehab:'stadium',
  offer:'contract',agentDeal:'contract',agentLeak:'contract',sponsor:'contract',sponsorIntro:'contract',investment:'contract',move:'contract',
@@ -190,6 +191,9 @@ function SwipeCard({scene,onChoice}){
  return <motion.div className={'scene-card tone-'+kind} drag="x" dragConstraints={{left:0,right:0}} dragElastic={.86} dragMomentum={false} onDragEnd={endDrag}
    style={{x,rotate,scale}} initial={{opacity:0,y:15}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:.94}} transition={{duration:.2}}>
    <Artwork kind={kind} match={scene.id==='match'}/>
+   {kind!=='stadium'&&<div className={'scene-photo scene-photo-'+kind} aria-hidden="true">
+     <img src={HERO_ART} alt="" draggable={false}/>
+   </div>}
    <motion.div className="drag-choice left" style={{opacity:left}}><span>← ОБРАНО</span><b>{scene.a.label}</b></motion.div>
    <motion.div className="drag-choice right" style={{opacity:right}}><span>ОБРАНО →</span><b>{scene.b.label}</b></motion.div>
    <div className="scenario-copy"><div className="scenario-tag">{scene.tag}<span>21+</span></div><h1>{scene.title}</h1><p className={scene.major?'long':''}>{scene.text}</p></div>
@@ -212,7 +216,7 @@ function StartMenu({saved,onContinue,onNew}){
  const exists=!!saved;
  const club=saved&&CLUB_BY_ID[saved.clubId];
  return <div className="start-menu">
-  <div className="start-atmosphere" aria-hidden="true"><div className="menu-spotlight"/><div className="menu-field"><i/><i/><i/></div></div>
+  <div className="start-atmosphere" aria-hidden="true"><img src={HERO_ART} alt="" className="menu-cover-image" draggable={false}/><div className="menu-spotlight"/><div className="menu-field"><i/><i/><i/></div></div>
   <div className="start-content">
    <div className="menu-heading"><span className="menu-overline">FOOTBALL / LIFE / 21+</span><div className="menu-brand">FL<span>·</span></div>
     <h1>Твоя кар’єра.<br/><em>Твої наслідки.</em></h1>
