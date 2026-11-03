@@ -41,6 +41,18 @@ test('jump rises and lands without falling through ground',()=>{
   advance(w,{forward:0,strafe:0,jump:false},1,env);
   assert.equal(w.vertical,0);assert.equal(w.vy,0);
 });
+test('a held jump button produces one jump until released and pressed again',()=>{
+  const w=createWalker(),env=world();
+  assert.equal(w.jumpHeld,false);
+  advance(w,{jump:true},1.5,env); // Longer than one complete jump arc.
+  assert.equal(w.vertical,0,'holding jump should not bounce on landing');
+  assert.equal(w.vy,0);
+  advance(w,{jump:true},.25,env);
+  assert.equal(w.vertical,0,'continued hold should not retrigger');
+  advance(w,{jump:false},1/60,env);
+  advance(w,{jump:true},.12,env);
+  assert.ok(w.vertical>0,'a second press should jump normally');
+});
 test('walker cannot pass through building and slides against its edge',()=>{
   const w=createWalker(),env=world();
   const block={minX:-1,maxX:1,minZ:2,maxZ:4,poly:[{x:-1,z:2},{x:1,z:2},{x:1,z:4},{x:-1,z:4}]};
