@@ -125,6 +125,9 @@ export function describeChoiceOutcome(before,game,scene,side,result){
    chapter:scene.plot.chapter,
    total:scene.plot.total,
    ending:result.plot?.ending||null
-  }:null
+  }:null,
+  rpgXp:result.rpgXp||null,
+  rpgCheck:result.rpgCheck||null,
+  rpgPerk:result.rpgPerk||null
  };
 }
