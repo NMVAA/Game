@@ -2,7 +2,7 @@
  * Real OSM building footprints take precedence. The photo study is not a map.
  */
 import * as T from '../vendor/three.module.js';
-import {collisionAt,closestRoad,distance,seeded} from './core.mjs';
+import {collisionAt,nearestPoint,seeded} from './core.mjs';
 import {localVisualLayout} from './local-layout.mjs';
 
 const brick=new T.MeshStandardMaterial({color:'#b9b2a2',roughness:.97});
@@ -36,8 +36,13 @@ export function buildLocalStudy(scene,world){
       const p={x:b.x+b.width*x,z:b.z+b.depth*z};
       if(collisionAt(world,p,radius*.33)){overlaps=true;break;}
     }
-    const road=closestRoad(world,b,Math.max(b.width,b.depth)*.55);
-    if(road&&road.distance<road.road.width*.5+1.4){overlaps=true;}
+    // Preserve every mapped road and narrow footway. An illustrative
+    // commercial building must never block an authentic school footpath.
+    const search=Math.max(b.width,b.depth)*.6+8;
+    for(const segment of world.roadGrid.near(b.x,b.z,search)){
+      if(nearestPoint(b,segment.a,segment.b).distance<
+         segment.road.width*.5+Math.min(b.width,b.depth)*.42+1.5){overlaps=true;break;}
+    }
     if(overlaps){omitted++;continue;}
     const wall=b.kind==='residential'?(built%3===0?brick:plaster):retail;
     const body=new T.Mesh(new T.BoxGeometry(b.width,b.height,b.depth),wall);
