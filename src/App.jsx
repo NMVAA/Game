@@ -23,7 +23,7 @@ const palettes={
  night:['#20264c','#bdb4ff','#13182e']
 };
 const toneFor=scene=>kinds[scene?.id]||'contract';
-function getSaved(){const game=loadGame();if(game)ensureStory(game);return game;}
+function getSaved(){return loadGame();}
 
 function Artwork({kind,match}){
  const palette=palettes[kind],bright=palette[1];
@@ -89,11 +89,11 @@ function Artwork({kind,match}){
   <rect width="480" height="520" fill="url(#grain-a)"/>
  </svg>;
 }
-function Header({game,onJournal}){
+function Header({game,onJournal,onMenu}){
  const c=CLUB_BY_ID[game.clubId];
  return <header className="header">
   <div className="brand"><span className="brand-mark">FL<b>·</b></span><div className="club-info"><strong>{c?.name||'Клуб'}</strong><small>{gameClock(game)}</small></div></div>
-  <div className="header-actions"><span className="cash">{formatCash(game.money)}</span><button type="button" className="journal-btn" onClick={onJournal} aria-label="Історія рішень">☷</button></div>
+  <div className="header-actions"><span className="cash">{formatCash(game.money)}</span><button type="button" className="menu-return" onClick={onMenu} aria-label="Повернутися до головного меню">Меню</button><button type="button" className="journal-btn" onClick={onJournal} aria-label="Історія рішень">☷</button></div>
  </header>;
 }
 function Meter({label,value,warn}){
@@ -164,20 +164,58 @@ function Controls({game,scene,onChoice}){
   </div>
  </div>;
 }
-function Setup({onStart}){
+
+function StartMenu({saved,onContinue,onNew}){
+ const exists=!!saved;
+ const club=saved&&CLUB_BY_ID[saved.clubId];
+ return <div className="start-menu">
+  <div className="start-atmosphere" aria-hidden="true"><div className="menu-spotlight"/><div className="menu-field"><i/><i/><i/></div></div>
+  <div className="start-content">
+   <div className="menu-heading"><span className="menu-overline">FOOTBALL / LIFE / 21+</span><div className="menu-brand">FL<span>·</span></div>
+    <h1>Твоя кар’єра.<br/><em>Твої наслідки.</em></h1>
+    <p>Футбол, близькі люди, великі рішення. Дві сторони кожної історії.</p>
+   </div>
+   <div className="menu-actions">
+    {exists&&<div className="save-card"><small>ЗБЕРЕЖЕНА КАР’ЄРА</small><b>{saved.name} · {club?.name||'Клуб'}</b>
+      <span>Сезон {saved.season} · Тиждень {saved.week} · {saved.age} років</span>
+      <span>Матчів {saved.career?.matches??0} · Капітал {formatCash(saved.money||0)}</span></div>}
+    <button className="menu-primary" onClick={onContinue} disabled={!exists}>ПРОДОВЖИТИ <span>→</span></button>
+    <button className="menu-secondary" onClick={onNew}>НОВА КАР’ЄРА <span>＋</span></button>
+    <small className="menu-footnote">{exists?'Нова кар’єра замінить сейв тільки після підтвердження.':'Збереження ще немає. Створи футболіста, щоб розпочати.'}</small>
+   </div>
+  </div>
+ </div>;
+}
+function Setup({onStart,onBack,hasSave}){
  const [name,setName]=useState('Алекс'),[position,setPosition]=useState('ST'),[clubId,setClubId]=useState(CLUBS[0].id);
- return <div className="setup"><div className="setup-hero">
-  <span>FOOTBALL LIFE / 21+</span><div className="setup-logo">FL<b>·</b></div><h1>Твоя гра.<br/>Твої наслідки.</h1>
-  <p>Футбол, кохання, трансфери й інтриги. Кожен свайп змінює майбутнє.</p></div>
-  <form className="setup-form" onSubmit={e=>{e.preventDefault();onStart({name,position,clubId});}}>
+ const [confirm,setConfirm]=useState(false);
+ const submit=e=>{e.preventDefault();if(hasSave){setConfirm(true);return;}onStart({name,position,clubId});};
+ return <div className="setup">
+  <div className="setup-hero"><button className="setup-back" type="button" onClick={onBack}>← МЕНЮ</button>
+   <span>НОВА КАР’ЄРА / 21+</span><div className="setup-logo">FL<b>·</b></div>
+   <h1>Створи свого<br/>футболіста.</h1>
+   <p>Розпочни нову історію. Твої рішення змінюватимуть футбольне й особисте життя.</p>
+  </div>
+  <form className="setup-form" onSubmit={submit}>
    <label>ІМ’Я ФУТБОЛІСТА<input value={name} onChange={e=>setName(e.target.value)} required maxLength={24}/></label>
    <label>АМПЛУА<select value={position} onChange={e=>setPosition(e.target.value)}>{POSITIONS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
    <label>ПЕРШИЙ КЛУБ<select value={clubId} onChange={e=>setClubId(e.target.value)}>{CLUBS.slice(0,4).map(c=><option key={c.id} value={c.id}>{c.name} · {c.city}</option>)}</select></label>
-   <button type="submit">ПОЧАТИ ІСТОРІЮ →</button><small>Усі партнери — 21+. Без дітей. Інтимні сцени без графічного зображення. Прогрес зберігається на цьому пристрої.</small>
-  </form></div>;
+   <button type="submit">РОЗПОЧАТИ КАР’ЄРУ →</button>
+   <small>{hasSave?'Поточна кар’єра поки збережена. Для заміни потрібне підтвердження.':'Усі романтичні персонажі 21+. Без дітей. Прогрес зберігається на цьому пристрої.'}</small>
+  </form>
+  {confirm&&<div className="replace-shade" role="dialog" aria-modal="true" aria-label="Підтвердити нову кар’єру">
+    <div className="replace-dialog"><span>УВАГА</span><h2>Почати заново?</h2>
+      <p>Нова кар’єра замінить поточний сейв на цьому пристрої. Цю дію неможливо скасувати.</p>
+      <button type="button" className="replace-confirm" onClick={()=>{setConfirm(false);onStart({name,position,clubId});}}>ТАК, ПОЧАТИ ЗАНОВО</button>
+      <button type="button" className="replace-cancel" onClick={()=>setConfirm(false)}>СКАСУВАТИ</button>
+    </div>
+   </div>}
+ </div>;
 }
 export default function App(){
- const [game,setGame]=useState(getSaved);
+ const [savedCareer,setSavedCareer]=useState(getSaved);
+ const [game,setGame]=useState(null);
+ const [screen,setScreen]=useState('menu');
  const [revision,setRevision]=useState(0);
  const [journal,setJournal]=useState(false);
  const [notice,setNotice]=useState('');
@@ -210,9 +248,23 @@ export default function App(){
   window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
  },[decide,game,journal]);
  useEffect(()=>()=>clearTimeout(timeout.current),[]);
- if(!game)return <Setup onStart={values=>{const g=makeCareer(values);saveGame(g);setGame(g);setRevision(n=>n+1);flash('Твоя історія почалася.');}}/>;
+ const continueCareer=()=>{
+   const old=loadGame()||savedCareer;
+   if(!old){setScreen('create');return;}
+   setGame(old);setJournal(false);setNotice('');
+   setScreen('play');setRevision(n=>n+1);
+ };
+ const newCareer=values=>{
+   const created=makeCareer(values);
+   saveGame(created);
+   setSavedCareer(created);setGame(created);
+   setJournal(false);setNotice('');setScreen('play');setRevision(n=>n+1);
+ };
+ if(screen==='menu')return <StartMenu saved={savedCareer} onContinue={continueCareer} onNew={()=>setScreen('create')}/>;
+ if(screen==='create')return <Setup hasSave={!!savedCareer} onBack={()=>setScreen('menu')} onStart={newCareer}/>;
+ if(!game)return <StartMenu saved={savedCareer} onContinue={continueCareer} onNew={()=>setScreen('create')}/>;
  return <div className={'app-shell tone-'+toneFor(scene)}>
-  <Header game={game} onJournal={()=>setJournal(true)}/>
+  <Header game={game} onJournal={()=>setJournal(true)} onMenu={()=>{saveGame(game);setSavedCareer(game);setJournal(false);setGame(null);setScreen('menu');}}/>
   <main className="stage">
    <div className="stack" aria-hidden="true"><div/><div/></div>
    <AnimatePresence mode="wait"><SwipeCard key={sceneKey} scene={scene} onChoice={decide}/></AnimatePresence>
