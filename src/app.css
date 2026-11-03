@@ -179,3 +179,25 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .npc-news p{color:#d8e5da;font-size:11px;line-height:1.5;margin:4px 0 0}
 @media(max-width:380px){.npc-characters{grid-template-columns:1fr}}
 @media(max-height:680px){.npc-details{max-height:34dvh}.npc-person{padding:7px}}
+
+
+/* Adult personal-life depth lives in the optional journal, not a tab. */
+.adult-details{flex:none;max-height:min(42dvh,375px);overflow:auto;overscroll-behavior:contain;
+  padding:0 12px 11px;margin-bottom:11px;background:#241e2c;border:1px solid #b6a0b169;border-radius:13px}
+.adult-details summary{cursor:pointer;position:sticky;top:0;z-index:2;background:#241e2c;
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;
+  padding:13px 2px;font-size:11px;font-weight:850;letter-spacing:.5px;color:#f3c1d6}
+.adult-details summary span{font-weight:600;font-size:9px;letter-spacing:0;color:#cfb5c5}
+.adult-overview{display:flex;flex-direction:column;gap:9px}
+.adult-overview>strong{font-size:14px;color:#ffecf3}
+.adult-overview>p{margin:0;color:#ddcedf;font-size:10px;line-height:1.5}
+.adult-meters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.adult-meters>span{font-size:10px;border:1px solid #ffd0e420;background:#52384b6b;
+  border-radius:9px;padding:9px;display:flex;flex-direction:column;gap:5px;color:#f1dce9}
+.adult-meters b{font-size:14px;color:#ffcadf;font-variant-numeric:tabular-nums}
+.adult-history{margin-top:9px}
+.adult-history>div{border-top:1px solid #ffd1e41f;padding:9px 0}
+.adult-history small{font-size:9px;color:#cdb4c4}
+.adult-history p{font-size:11px;line-height:1.45;color:#f5e3f0;margin:5px 0 0}
+.adult-empty{font-size:12px;line-height:1.5;color:#dfc8d6}
+@media(max-height:650px){.adult-details{max-height:32dvh}.adult-meters>span{padding:6px}}
