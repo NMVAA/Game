@@ -112,11 +112,17 @@ function Artwork({kind,match}){
   <rect width="480" height="520" fill="url(#grain-a)"/>
  </svg>;
 }
-function Header({game,onJournal,onMenu}){
+function Header({game,onJournal,onCharacter,onMenu}){
  const c=CLUB_BY_ID[game.clubId];
- return <header className="header">
-  <div className="brand"><span className="brand-mark">FL<b>·</b></span><div className="club-info"><strong>{c?.name||'Клуб'}</strong><small>{gameClock(game)}</small></div></div>
-  <div className="header-actions"><span className="cash">{formatCash(game.money)}</span><button type="button" className="menu-return" onClick={onMenu} aria-label="Повернутися до головного меню">Меню</button><button type="button" className="journal-btn" onClick={onJournal} aria-label="Історія рішень">☷</button></div>
+ return <header className="play-header">
+  <div className="play-header-top">
+   <div className="play-identity"><strong>{c?.name||'Клуб'}</strong><span>{gameClock(game)}</span></div>
+   <button type="button" className="play-nav-menu" onClick={onMenu}>МЕНЮ</button>
+  </div>
+  <nav className="play-header-nav" aria-label="Інформація про кар’єру">
+   <button type="button" onClick={onCharacter}>ПЕРСОНАЖ</button>
+   <button type="button" onClick={onJournal}>ІСТОРІЯ ТА НАСЛІДКИ</button>
+  </nav>
  </header>;
 }
 function Meter({label,value,warn}){
@@ -215,10 +221,10 @@ function Journal({game,onClose}){
 }
 function SwipeCard({scene,onChoice}){
  const x=useMotionValue(0);
- const rotate=useTransform(x,[-310,0,310],[-11,0,11]);
- const scale=useTransform(x,[-250,0,250],[1.035,1,1.035]);
- const left=useTransform(x,[-210,-45,0],[1,.04,0]);
- const right=useTransform(x,[0,45,210],[0,.04,1]);
+ const rotate=useTransform(x,[-310,0,310],[-7,0,7]);
+ const scale=useTransform(x,[-250,0,250],[1.02,1,1.02]);
+ const left=useTransform(x,[-200,-35,0],[1,0,0]);
+ const right=useTransform(x,[0,35,200],[0,0,1]);
  const lock=useRef(false);
  const kind=toneFor(scene);
  const artwork=artForScene(scene,kind);
@@ -233,48 +239,96 @@ function SwipeCard({scene,onChoice}){
   });
  },[x,onChoice]);
  const endDrag=(_event,info)=>{
-  if(info.offset.x< -98||info.velocity.x< -720)choose(0);
-  else if(info.offset.x>98||info.velocity.x>720)choose(1);
+  if(info.offset.x< -90||info.velocity.x< -700)choose(0);
+  else if(info.offset.x>90||info.velocity.x>700)choose(1);
   else animate(x,0,{type:'spring',stiffness:430,damping:31});
  };
- return <motion.div className={'scene-card tone-'+kind} drag="x" dragConstraints={{left:0,right:0}} dragElastic={.86} dragMomentum={false} onDragEnd={endDrag}
-   style={{x,rotate,scale}} initial={{opacity:0,y:15}} animate={{opacity:1,y:0}} exit={{opacity:0,scale:.94}} transition={{duration:.2}}>
+ return <motion.div className={'scene-card swipe-full-card tone-'+kind}
+  drag="x" dragConstraints={{left:0,right:0}} dragElastic={.82} dragMomentum={false}
+  onDragEnd={endDrag} style={{x,rotate,scale}}
+  initial={{opacity:0,y:12}} animate={{opacity:1,y:0}}
+  exit={{opacity:0,scale:.96}} transition={{duration:.2}}>
    <Artwork kind={kind} match={scene.id==='match'}/>
    <div className={'scene-photo scene-photo-'+kind+' scene-art-'+artwork} aria-hidden="true">
-     <img src={artUrl(artwork)} alt="" draggable={false} loading="eager" decoding="async"/>
+    <img src={artUrl(artwork)} alt="" draggable={false} loading="eager" decoding="async"/>
    </div>
-   <motion.div className="drag-choice left" style={{opacity:left}}><span>← ОБРАНО</span><b>{scene.a.label}</b></motion.div>
-   <motion.div className="drag-choice right" style={{opacity:right}}><span>ОБРАНО →</span><b>{scene.b.label}</b></motion.div>
-   <div className="scenario-copy">
-     {scene.plot&&<div className="plot-chapter"><span>{scene.plot.phase}</span>
-       <b>{scene.plot.name} · {scene.plot.chapter}/{scene.plot.total}</b>
-     </div>}
-     {scene.rpgLevel&&<div className="rpg-level-banner">
-       <strong>ПІДВИЩЕННЯ РІВНЯ · LVL {scene.rpgLevel.level}</strong>
-       <span>Ліворуч: {scene.rpgLevel.left}</span>
-       <span>Праворуч: {scene.rpgLevel.right}</span>
-     </div>}
-     <div className="scenario-tag">{scene.tag}<span>21+</span></div><h1>{scene.title}</h1><p className={scene.major?'long':''}>{scene.text}</p></div>
+   <div className="swipe-full-layout">
+    <section className="swipe-story" aria-label="Ситуація">
+     {scene.plot&&<div className="swipe-plot"><span>{scene.plot.name}</span><b>{scene.plot.phase} · {scene.plot.chapter}/{scene.plot.total}</b></div>}
+     {scene.rpgLevel&&<div className="swipe-plot"><span>RPG · РІВЕНЬ {scene.rpgLevel.level}</span><b>НОВА ЗДІБНІСТЬ</b></div>}
+     <div className="swipe-tag">{scene.tag}<span>21+</span></div>
+     <h1>{scene.title}</h1>
+     <p>{scene.text}</p>
+    </section>
+    <div className="swipe-gesture-label" aria-hidden="true">СВАЙПНИ КАРТКУ <span>← АБО →</span></div>
+    <div className="swipe-choices" aria-label="Два варіанти рішення: ліворуч і праворуч">
+     <div className="swipe-half swipe-half-left">
+      <span className="swipe-half-direction">← ЛІВОРУЧ</span>
+      <strong>{scene.a.label}</strong>
+      <p>{scene.rpgLevel?.left||scene.a.sub}</p>
+     </div>
+     <div className="swipe-half swipe-half-right">
+      <span className="swipe-half-direction">ПРАВОРУЧ →</span>
+      <strong>{scene.b.label}</strong>
+      <p>{scene.rpgLevel?.right||scene.b.sub}</p>
+     </div>
+    </div>
+   </div>
+   <motion.div className="swipe-choice-highlight swipe-choice-highlight-left" style={{opacity:left}} aria-hidden="true"/>
+   <motion.div className="swipe-choice-highlight swipe-choice-highlight-right" style={{opacity:right}} aria-hidden="true"/>
  </motion.div>;
 }
-function Controls({game,scene,onChoice}){
- const match=scene.id==='match',step=match?(game.match?.turns||0):game.story.step,maximum=match?12:4;
- const rpg=rpgSnapshot(game);
- return <div className="controls">
-  <div className="progress"><span>{match?'МАТЧ':'ТВІЙ ДЕНЬ'}</span><div><i style={{width:Math.min(100,step/maximum*100)+'%'}}/></div><b>{Math.min(maximum,step+1)} / {maximum}</b></div>
-  <div className="rpg-hud"><b>LVL {rpg.level}</b><div><i style={{width:Math.min(100,rpg.xp/rpg.required*100)+'%'}}/></div>
-    <small>{rpg.xp}/{rpg.required} XP</small>
-    {rpg.pending>0&&<span>НОВА ЗДІБНІСТЬ</span>}
-  </div>
-  <div className="meters"><Meter label="ЕНЕРГІЯ" value={game.energy}/><Meter label="РЕПУТАЦІЯ" value={game.reputation}/><Meter label="ДОВІРА" value={game.personal.personId?game.personal.trust:game.story.clubTrust}/><Meter label="СТРЕС" value={game.stress} warn/></div>
-  <div className="swipe-instructions"><span>← ПРОВЕДИ ЛІВОРУЧ</span><span>ПРОВЕДИ ПРАВОРУЧ →</span></div>
-  <div className="choices">
-   <button className="choice choice-left" onClick={()=>onChoice(0)} aria-label={'Вибрати '+scene.a.label}><span>←</span><strong>{scene.a.label}</strong><small>{scene.a.sub}</small></button>
-   <button className="choice choice-right" onClick={()=>onChoice(1)} aria-label={'Вибрати '+scene.b.label}><span>→</span><strong>{scene.b.label}</strong><small>{scene.b.sub}</small></button>
-  </div>
- </div>;
+function CharacterSheet({game,onClose}){
+ const rpg=rpgSnapshot(game),story=ensureStory(game);
+ const partner=game.personal?.personId;
+ const stats=[
+  {name:'Енергія',value:game.energy},
+  {name:'Форма',value:game.form},
+  {name:'Репутація',value:game.reputation},
+  {name:'Стрес',value:game.stress},
+  {name:partner?'Довіра партнера':'Довіра клубу',value:partner?game.personal.trust:story.clubTrust},
+  {name:'Довіра агента',value:story.agentTrust}
+ ];
+ return <motion.div className="character-overlay" role="dialog" aria-modal="true" aria-label="Персонаж і RPG"
+  initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}>
+  <motion.section className="character-sheet" initial={{y:40}} animate={{y:0}} exit={{y:40}}
+   onClick={e=>e.stopPropagation()}>
+   <header className="character-head">
+    <div><span>FOOTBALL LIFE · RPG</span><h2>Мій персонаж</h2></div>
+    <button type="button" onClick={onClose} aria-label="Закрити персонажа">✕</button>
+   </header>
+   <div className="character-body">
+    <div className="character-level-card">
+     <div className="character-level-head"><strong>РІВЕНЬ {rpg.level}</strong><span>{rpg.xp} / {rpg.required} XP</span></div>
+     <div className="character-xp-bar" role="progressbar" aria-valuenow={rpg.xp} aria-valuemin={0} aria-valuemax={rpg.required}>
+      <i style={{width:Math.min(100,rpg.xp/rpg.required*100)+'%'}}/></div>
+     {rpg.pending>0&&<p>Доступно {rpg.pending} виборів здібності — обирай свайпом у грі.</p>}
+    </div>
+    <div className="character-wallet"><span>БАЛАНС</span><strong>{formatCash(game.money)}</strong></div>
+    <h3>Стан футболіста</h3>
+    <div className="character-stats">
+     {stats.map(x=><div className="character-stat" key={x.name}>
+      <div><span>{x.name}</span><strong>{Math.round(clamp(x.value))}%</strong></div>
+      <div className="character-stat-track"><i style={{width:clamp(x.value)+'%'}}/></div>
+     </div>)}
+    </div>
+    <h3>RPG-характеристики</h3>
+    <div className="character-attributes">
+     {rpg.attributes.map(a=><div key={a.id}>
+      <span>{a.name}</span><strong>{a.value}/10</strong>
+      <div className="character-stat-track"><i style={{width:Math.min(100,a.value*10)+'%'}}/></div>
+     </div>)}
+    </div>
+    <h3>Вивчені здібності</h3>
+    <div className="character-perks">{rpg.perks.filter(x=>x.rank>0).length?
+     rpg.perks.filter(x=>x.rank>0).map(x=><article key={x.id}><strong>{x.name} · ранг {x.rank}</strong><p>{x.description}</p></article>):
+     <p>Здобувай досвід у матчах та сюжетах. Після підвищення рівня відкриється вибір здібності.</p>}
+    </div>
+    <p className="character-checks">Сюжетні перевірки: {rpg.passed} з {rpg.checks} успішних.</p>
+   </div>
+  </motion.section>
+ </motion.div>;
 }
-
 function ChoiceOutcome({outcome,onContinue}){
  const {changes,delayed,plot}=outcome;
  const scrollRef=useRef(null);
@@ -411,6 +465,7 @@ export default function App(){
  const [screen,setScreen]=useState('menu');
  const [revision,setRevision]=useState(0);
  const [journal,setJournal]=useState(false);
+ const [character,setCharacter]=useState(false);
  const [notice,setNotice]=useState('');
  const [outcome,setOutcome]=useState(null);
  const timeout=useRef(null);
@@ -423,7 +478,7 @@ export default function App(){
  const flash=useCallback(message=>{setNotice(message);clearTimeout(timeout.current);timeout.current=setTimeout(()=>setNotice(''),2100);},[]);
 
  const decide=useCallback(side=>{
-  if(!game||journal||outcome)return false;
+  if(!game||journal||character||outcome)return false;
   if(performance.now()-lastChoice.current<280)return false;
   try{
     const shownScene=scene;
@@ -439,41 +494,41 @@ export default function App(){
     }
     flash(result.message||'Зараз це рішення недоступне.');return false;
   }catch(error){console.error(error);flash('Не вдалося завершити вибір. Спробуй ще раз.');return false;}
- },[game,journal,outcome,scene,flash]);
+ },[game,journal,character,outcome,scene,flash]);
  useEffect(()=>{
   const onKey=e=>{
    if(e.target instanceof Element&&e.target.closest('input,select,textarea'))return;
-   if(journal||!game||outcome)return;
+   if(journal||character||!game||outcome)return;
    if(e.key==='ArrowLeft'){e.preventDefault();decide(0);}
    if(e.key==='ArrowRight'){e.preventDefault();decide(1);}
   };
   window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
- },[decide,game,journal,outcome]);
+ },[decide,game,journal,character,outcome]);
  useEffect(()=>()=>clearTimeout(timeout.current),[]);
  const continueCareer=()=>{
    const old=loadGame()||savedCareer;
    if(!old){setScreen('create');return;}
-   setGame(old);setJournal(false);setNotice('');setOutcome(null);
+   setGame(old);setJournal(false);setCharacter(false);setNotice('');setOutcome(null);
    setScreen('play');setRevision(n=>n+1);
  };
  const newCareer=values=>{
    const created=makeCareer(values);
    saveGame(created);
    setSavedCareer(created);setGame(created);
-   setJournal(false);setNotice('');setOutcome(null);setScreen('play');setRevision(n=>n+1);
+   setJournal(false);setCharacter(false);setNotice('');setOutcome(null);setScreen('play');setRevision(n=>n+1);
  };
  if(screen==='menu')return <StartMenu saved={savedCareer} onContinue={continueCareer} onNew={()=>setScreen('create')}/>;
  if(screen==='create')return <Setup hasSave={!!savedCareer} onBack={()=>setScreen('menu')} onStart={newCareer}/>;
  if(!game)return <StartMenu saved={savedCareer} onContinue={continueCareer} onNew={()=>setScreen('create')}/>;
  return <div className={'app-shell tone-'+toneFor(scene)}>
-  <Header game={game} onJournal={()=>setJournal(true)} onMenu={()=>{saveGame(game);setSavedCareer(game);setJournal(false);setOutcome(null);setGame(null);setScreen('menu');}}/>
-  <main className="stage">
+  <Header game={game} onJournal={()=>setJournal(true)} onCharacter={()=>setCharacter(true)} onMenu={()=>{saveGame(game);setSavedCareer(game);setJournal(false);setCharacter(false);setOutcome(null);setGame(null);setScreen('menu');}}/>
+  <main className="stage immersive-stage">
    <div className="stack" aria-hidden="true"><div/><div/></div>
    <AnimatePresence mode="wait"><SwipeCard key={sceneKey} scene={scene} onChoice={decide}/></AnimatePresence>
   </main>
-  <Controls game={game} scene={scene} onChoice={decide}/>
   <AnimatePresence>{notice&&<motion.div className="notice" key={notice} role="status" initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}}>{notice}</motion.div>}</AnimatePresence>
   <AnimatePresence>{journal&&<Journal game={game} onClose={()=>setJournal(false)}/>}</AnimatePresence>
+  <AnimatePresence>{character&&<CharacterSheet game={game} onClose={()=>setCharacter(false)}/>}</AnimatePresence>
   <AnimatePresence>{outcome&&<ChoiceOutcome key={outcome.context+'-'+outcome.choice+'-'+revision} outcome={outcome} onContinue={()=>setOutcome(null)}/>}</AnimatePresence>
  </div>;
 }
