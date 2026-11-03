@@ -221,7 +221,7 @@ export function resolveNpcChoice(g,id){
    if(action==='compromise'){
      g.money=Math.max(0,g.money-Math.min(g.money,650));
      remember(g,p,'respected_own_career','Ти врахував окремі кар’єрні амбіції партнера.',{trust:12,loyalty:12,resentment:-6});
-     relating(g,{bond:6,stress:0});stat(g,{energy:-7});
+     relating(g,{bond:6});stat(g,{energy:-7});
      partner.goalProgress=cap(partner.goalProgress+13);
      return outcome('Ви домовилися про спільні плани. Це коштувало грошей і часу.');
    }
