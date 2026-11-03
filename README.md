@@ -1,5 +1,11 @@
 # Game
 
+## Version 0.4.11 — Safe start and roadside recovery on one-way streets
+
+- Starting the driving simulation now selects the closest mapped road junction with a legal outgoing edge. A one-way dead end can be a valid destination but must not crash map loading by supplying a missing next junction.
+- Roadside rescue uses the same directed-road check, preventing the menu action from crashing when the nearest junction has no permitted exit. The route direction is used to orient the recovered car.
+- Regression test constructs a 20-segment one-way chain ending exactly at the geographic origin and verifies startup, recovery and legal heading. Offline cache and UI version bumped.
+
 ## Version 0.4.10 — Legal OSM driving directions
 
 - Driving navigation now honours OSM `oneway=yes`, `oneway=-1` and roundabout directionality (with an explicit `oneway=no` override). Streets marked `access`, `vehicle`, `motor_vehicle` or `motorcar` as private/prohibited are excluded from car routing.
@@ -111,6 +117,6 @@ The GitHub Pages workflow runs logic tests, prepares assets, validates the real 
 
 ## Geographic fidelity and limitations
 
-Roads and building outlines are real OSM geometry, within the available snapshot's coverage. Ground is flat. Building heights use OSM tags where available and estimates otherwise. Facades, car models, vegetation and street furniture are procedural and may not match the real city. Multipolygon reconstruction, realistic terrain, one-way-aware traffic and advanced wheel suspension are not implemented. The collision model is an arcade approximation, not a full rigid-body simulation. Persistent saves use browser storage and can be removed by the browser/user.
+Roads and building outlines are real OSM geometry, within the available snapshot's coverage. Ground is flat. Building heights use OSM tags where available and estimates otherwise. Facades, car models, vegetation and street furniture are procedural and may not match the real city. Multipolygon reconstruction, realistic terrain, lane-level traffic behavior and advanced wheel suspension are not implemented. The collision model is an arcade approximation, not a full rigid-body simulation. Persistent saves use browser storage and can be removed by the browser/user.
 
 Attribution is visible in the game. OSM source data is distributed under ODbL as `map/pokrov.json`; see `THIRD_PARTY.txt` for dependency and data licensing.

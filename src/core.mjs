@@ -1,5 +1,5 @@
 /** Deterministic game logic; no browser or Three.js dependency. Metres and seconds. */
-export const VERSION = '0.4.10';
+export const VERSION = '0.4.11';
 export const ORIGIN = [47.653, 34.094];
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const finite = (v, fallback = 0) => Number.isFinite(Number(v)) ? Number(v) : fallback;
@@ -97,10 +97,11 @@ export function parseMap(data) {
     while (stack.length) { const key = stack.pop(); group.push(key); for (const n of connectivity.get(key) || []) if (!seen.has(n)) { seen.add(n); stack.push(n); } }
     if (group.length > component.length) component = group;
   }
-  const ids = new Set(component), all = component.map(id=>nodes.get(id));
-  const spawnNode = all.reduce((a,b)=>Math.hypot(a.x,a.z)<Math.hypot(b.x,b.z)?a:b);
-  const targetNode = nodes.get((graph.get(spawnNode.id) || []).find(n=>ids.has(n)));
-  const spawn = { x: spawnNode.x, z: spawnNode.z, angle: Math.atan2(targetNode.x-spawnNode.x,targetNode.z-spawnNode.z), id: spawnNode.id };
+  const all = component.map(id=>nodes.get(id));
+  // A one-way street can end at the node nearest the map origin. Such a
+  // node has no legal outgoing edge and cannot provide a spawn heading.
+  const spawn = nearestDrivableSpawn({nodes,graph,component},{x:0,z:0});
+  if(!spawn)throw new Error('Немає доступної дороги для старту автомобіля.');
   return { roads, buildings, parks, water, roadGrid, obstacles, nodes, graph, component, spawn,
     bounds: { minX: Math.min(...all.map(p=>p.x))-90, maxX: Math.max(...all.map(p=>p.x))+90, minZ: Math.min(...all.map(p=>p.z))-90, maxZ: Math.max(...all.map(p=>p.z))+90 } };
 }
@@ -113,6 +114,27 @@ export function closestRoad(world, p, radius = 70) {
   return best;
 }
 export function nearestNode(world,p) { let best, d = Infinity; for (const id of world.component) { const v = world.nodes.get(id), n = distance(v,p); if (n < d) { best = id; d = n; } } return best; }
+/** Find the nearest junction with a legal outgoing edge, for initial spawn and rescue.
+ * A sink node on a one-way road is valid for arrival but not for starting a car.
+ */
+export function nearestDrivableSpawn(world,position) {
+  let best=null,nearest=Infinity;
+  for(const id of world.component){
+    const node=world.nodes.get(id);
+    if(!node)continue;
+    const d=distance(node,position);
+    if(d>=nearest)continue;
+    const nextId=(world.graph.get(id)||[]).find(key=>{
+      const next=world.nodes.get(key);
+      return next&&distance(node,next)>.1;
+    });
+    if(nextId===undefined)continue;
+    const next=world.nodes.get(nextId);
+    best={x:node.x,z:node.z,angle:Math.atan2(next.x-node.x,next.z-node.z),id};
+    nearest=d;
+  }
+  return best;
+}
 /** Heap-backed A* avoids scanning all frontier intersections every step. */
 function routePush(heap, entry) {
   let i = heap.length; heap.push(entry);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseMap,project,findRoute,chooseMission,nearestNode,createState,spawnAt,stepVehicle,collisionAt,vehicleHullCollision,SpatialGrid,inside,nearestPoint,seeded} from '../src/core.mjs';
+import {parseMap,project,findRoute,chooseMission,nearestNode,nearestDrivableSpawn,createState,spawnAt,stepVehicle,collisionAt,vehicleHullCollision,SpatialGrid,inside,nearestPoint,seeded} from '../src/core.mjs';
 import {EYE_HEIGHT,createWalker,lookAround,placeWalker,stepWalker} from '../src/walking.mjs';
 function fixture(){const elements=[],n=7;for(let j=0;j<n;j++)for(let i=0;i<n;i++)elements.push({type:'node',id:1+j*n+i,lon:34.09+i*.0017,lat:47.648+j*.0013});for(let i=0;i<n;i++){elements.push({type:'way',id:100+i,nodes:Array.from({length:n},(_,j)=>1+j*n+i),tags:{highway:'residential',name:'Тестова вертикаль'}});elements.push({type:'way',id:200+i,nodes:Array.from({length:n},(_,j)=>1+i*n+j),tags:{highway:'residential',name:'Тестова горизонталь'}});}return{elements};}
 function flat(){const obstacles=new SpatialGrid(),roadGrid=new SpatialGrid();roadGrid.insert({a:{x:0,z:-5000},b:{x:0,z:5000},road:{width:100,drive:true}},-50,-5000,50,5000);return{obstacles,roadGrid,bounds:{minX:-5000,minZ:-5000,maxX:5000,maxZ:5000}};}
@@ -145,4 +145,25 @@ test('private and motor-vehicle-prohibited streets are excluded from driving rou
     assert.ok(!w.graph.get('1').includes('2'),`${key}=${value}: restricted link was routed`);
     assert.ok(w.component.length>=40,'remaining public network should stay available');
   }
+});
+
+test('spawn and rescue avoid dead ends of OSM one-way streets',()=>{
+  // A chain of mapped one-way segments ends exactly at the map origin.
+  // Previously parseMap tried to read the missing outgoing neighbour of node 21.
+  const elements=[];
+  for(let i=0;i<21;i++)elements.push({type:'node',id:i+1,lon:34.074+i*.001,lat:47.653});
+  for(let i=0;i<20;i++)elements.push({type:'way',id:1000+i,nodes:[i+1,i+2],tags:{highway:'residential',oneway:'yes'}});
+  const world=parseMap({elements}),sink=world.nodes.get('21');
+  assert.equal(world.component.length,21);
+  assert.deepEqual(world.graph.get('21'),[]);
+  assert.equal(world.spawn.id,'20','start at the last node with a permitted outgoing edge');
+  assert.ok(world.graph.get(world.spawn.id).includes('21'));
+  assert.ok(Number.isFinite(world.spawn.angle));
+  const rescue=nearestDrivableSpawn(world,sink);
+  assert.equal(rescue.id,'20','rescue must not place the car at a one-way sink');
+  const s=createState();
+  spawnAt(s,rescue);
+  assert.equal(s.x,rescue.x);
+  assert.equal(s.z,rescue.z);
+  assert.equal(s.angle,rescue.angle);
 });
