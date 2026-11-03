@@ -26,6 +26,19 @@ export function makeNeighborhoodOverlay(scene,world,tour,data) {
   if(!tour)return {setVisible(){},update(){}};
   const group=new T.Group();group.name='Game neighbourhood route';scene.add(group);
   const route=tour.route,markerColor='#a9e8d5';
+  if(tour.connector?.points?.length>1){
+    // A translucent in-game approach surface, deliberately not represented
+    // as a mapped or legally public footpath.
+    const mat=new T.MeshBasicMaterial({color:'#dbc6a3',transparent:true,opacity:.38,depthWrite:false});
+    for(let i=1;i<tour.connector.points.length;i++){
+      const a=tour.connector.points[i-1],b=tour.connector.points[i],len=distance(a,b);
+      if(len<.1)continue;
+      const path=new T.Mesh(new T.BoxGeometry(2.6,.018,len),mat);
+      path.position.set((a.x+b.x)/2,.075,(a.z+b.z)/2);
+      path.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);
+      group.add(path);
+    }
+  }
   const segments=[];for(let i=1;i<route.length;i++){
     const a=route[i-1],b=route[i],len=distance(a,b);
     if(len<.1)continue;
