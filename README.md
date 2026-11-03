@@ -1,5 +1,14 @@
 # Game
 
+## Version 0.5.0 — Photo-referenced Centralna 59 district study
+
+- Inspected the actual mobile Chromium screenshot and the packaged OSM geometry. The source snapshot had almost no mapped features within roughly 250 m of the approximate house 59 anchor, explaining the large empty foreground.
+- Added an expressly **interpretive visual reconstruction** from the user's satellite images: commercial frontage near the Centralna 59 reference, a local market, long residential slabs on the western side, landscaped court and differentiated store signage.
+- Added differentiated building roofs, instanced apartment windows, a much denser dendropark canopy and understory plants. Real mapped OSM roads and building footprints take precedence; new study buildings are omitted where mapped geometry conflicts.
+- Built low-draw-call instanced vegetation and facade elements for phones; new unit tests check visual study provenance, placement and collision clearance, while mobile WebGL tests inspect landscape counts.
+- **Accuracy:** approximate screenshot interpretation, not photogrammetry, surveyed building locations, licensed satellite textures or an AAA reconstruction. The source satellite image itself is not embedded or redistributed. Ground-level/orthophoto alignment and visual comparison are still required.
+
+
 ## Version 0.4.11 — Safe start and roadside recovery on one-way streets
 
 - Starting the driving simulation now selects the closest mapped road junction with a legal outgoing edge. A one-way dead end can be a valid destination but must not crash map loading by supplying a missing next junction.
