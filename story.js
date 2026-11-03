@@ -1,5 +1,6 @@
 import {CLUBS,CLUB_BY_ID,CONTACTS,CONTACT_BY_ID,POSITIONS,TRAINING,formatCash} from './data.js';
 import {newGame,gameClock,scorePlayer,train,meet,relationshipAction,recover,negotiate,acceptOffer,rejectOffer,nextDay,beginMatch,matchAction} from './engine.js';
+import {initMemory,remember,memoryOf,currentPartnerId,makePromise,resolvePromise,queueArc,markArc,updateMemoryClock,careerAccess} from './memory.js';
 
 const cap=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
 const roll=g=>{g.seed=(Math.imul(g.seed,1664525)+1013904223)>>>0;return g.seed/4294967296;};
@@ -21,12 +22,20 @@ function record(g,label,result){
   timeline(g,result,'story');
 }
 export function ensureStory(g){
- if(g.story?.version===2)return g.story;
- g.story={version:2,step:0,dayKey:'',pending:[],flags:{},journal:[],
+ if(g.story?.version===3){initMemory(g);return g.story;}
+ // Migrate existing Football Life careers without replacing their decisions,
+ // money, relationships, previous scandals or scheduled story events.
+ if(g.story?.version===2){
+   g.story.version=3;
+   g.story.pending ||= [];g.story.flags ||= {};g.story.journal ||= [];
+   initMemory(g);
+   return g.story;
+ }
+ g.story={version:3,step:0,dayKey:'',pending:[],flags:{},journal:[],
    agentTrust:58,clubTrust:58,media:22,privacy:68,temptation:0,sponsor:0,
    scandal:0,financialPressure:0,romanceHeat:0,focus:55,agentDeal:false,
    lastEvent:'',matches:0};
- return g.story;
+ initMemory(g);return g.story;
 }
 function training(g){
  const role=POSITIONS.find(x=>x.id===g.position)?.focus||'passing';
@@ -43,9 +52,11 @@ function training(g){
    opt('Розвивати '+skillNames[alternative],'+універсальність, -енергія','train:'+alternative));
 }
 function pendingEvent(g){
- const index=g.story.pending.findIndex(x=>x.due<=dateNum(g));
- if(index<0)return null;
- const item=g.story.pending.splice(index,1)[0];
+ const due=g.story.pending.map((p,i)=>({p,i})).filter(x=>x.p.due<=dateNum(g)).sort((a,b)=>a.p.due-b.p.due||a.i-b.i);
+ if(!due.length)return null;
+ const item=g.story.pending.splice(due[0].i,1)[0];
+ if(item.payload?.actor?.startsWith('partner:')&&item.payload.actor!==currentPartnerId(g))return pendingEvent(g);
+ markArc(g,item);
  const name=partner(g)?.name||'партнер';
  switch(item.kind){
  case 'photo':
@@ -93,6 +104,51 @@ function pendingEvent(g){
     'Після скандалу спонсор вимагає публічного вибачення або погрожує розірвати контракт.',
     opt('Визнати відповідальність','Менше доходу, шанс зберегти угоду','sponsor:apology'),
     opt('Відмовитися','Свобода, фінансовий удар','sponsor:walk'),true);
+ case 'memoryPromise':
+  return event('memoryPromise','ОБІЦЯНКИ · ПАМ’ЯТЬ','Ти дав слово, яке пам’ятають',
+    name+' очікує на обіцяну зустріч. Тренер одночасно викликає тебе на додаткову підготовку.',
+    opt('Дотримати обіцянку','Довіра близької людини, менше сил','promise:keep'),
+    opt('Поставити футбол вище','Сильніший зв’язок із тренером, образа вдома','promise:break'),true);
+ case 'memoryBoard':
+  return event('memoryBoard','КЛУБ · РОЗСЛІДУВАННЯ','Керівництво пам’ятає домовленість',
+    'Після таємних переговорів клуб отримав подробиці. Тренер ставить пряме запитання про твою лояльність.',
+    opt('Визнати домовленість','Можливе примирення, фінансовий ризик','board:honest'),
+    opt('Захищати агента','Клуб запам’ятає брехню','board:cover'),true);
+ case 'memoryEvidence':
+  return event('memoryEvidence','КЛУБ · ПІДТВЕРДЖЕННЯ','З’явилися докази',
+    'Журналісти оприлюднили факти, які суперечать твоїм попереднім словам. Агент просить мовчати.',
+    opt('Виправити свідчення','Втрата обличчя зараз, шанс повернути довіру','evidence:admit'),
+    opt('Звинуватити агента','Конфлікт з представником','evidence:blame'),true);
+ case 'memoryAgent':
+  return event('memoryAgent','АГЕНТ · НАСЛІДКИ','Агент пам’ятає недовіру',
+    'Твій представник затримує інформацію про клуби. Старі образи впливають на майбутні контракти.',
+    opt('Відновити співпрацю','Розмова й часткове примирення','agent:repair'),
+    opt('Змінити агента','Витрати, нові можливості','agent:replace'),true);
+ case 'memorySelection':
+  return event('memorySelection','ТАКТИКА · СКЛАД','Тренер обирає стартовий склад',
+    'Старі конфлікти вплинули на твою позицію. Капітан готовий висловитися на твою підтримку.',
+    opt('Попросити шанс','Ризик відмови, можлива довіра','selection:request'),
+    opt('Прийняти конкуренцію','Час на тренування, менше напруги','selection:accept'),true);
+ case 'memoryTeam':
+  return event('memoryTeam','РОЗДЯГАЛЬНЯ · КОНФЛІКТ','Команда розділилася',
+    'Капітан пригадав ваш конфлікт. Частина футболістів підтримує його перед важливим матчем.',
+    opt('Поговорити з капітаном','Визнати образу й повернути довіру','team:apologize'),
+    opt('Відстояти свою позицію','Більше напруги, власний авторитет','team:challenge'),true);
+ case 'memoryRelationship':
+  return event('memoryRelationship','СТОСУНКИ · ПАМ’ЯТЬ',name+' пам’ятає обіцянки',
+    'Попередні обіцянки, переїзди та пропущені вечори накопичилися. Зараз слова важливіші за подарунки.',
+    opt('Вислухати без виправдань','+довіра, -час і сили','memory:listen'),
+    opt('Поставити межі','+самостійність, ризик розриву','memory:boundaries'),true);
+ case 'memoryRelocation':
+  return event('memoryRelocation','ТРАНСФЕР · ДАЛЕКІ НАСЛІДКИ','Нове місто, нові правила',
+    'Партнер і клуб по-різному оцінюють твій переїзд. Один із них чекає на компроміс.',
+    opt('Домовитися з партнером','Гроші й час проти стабільності','relocation:family'),
+    opt('Зосередитись на футболі','Ризик образи, більше підтримки клубу','relocation:club'),true);
+ case 'memoryOpportunity':
+  return event('memoryOpportunity','КАР’ЄРА · ВИНАГОРОДА','Стару лояльність оцінили',
+    'Тренер пам’ятає, як ти підтримав команду. Тобі пропонують роль у важливому матчі.',
+    opt('Взяти відповідальність','+форма, -енергія, шанс на ріст','opportunity:lead'),
+    opt('Залишитися командним гравцем','+довіра команди, стабільність','opportunity:team'));
  case 'investment':
   return event('investment','ФІНАНСИ · НАСЛІДКИ','Ризикована інвестиція',
     'Твоя інвестиція змінилася в ціні. Агент пропонує зафіксувати результат або ризикнути.',
@@ -102,6 +158,11 @@ function pendingEvent(g){
  }
 }
 function agent(g){
+ const access=careerAccess(g);
+ if(access.agentFrozen)return event('agentFreeze','АГЕНТ · ПАМ’ЯТЬ','Агент припинив співпрацю',
+   'Накопичені образи заблокували переговори. Поки конфлікт не вирішено, нові пропозиції надходять повільніше.',
+   opt('Налагодити відносини','Примирення коштує довіри до себе','agent:repair'),
+   opt('Найняти іншого агента','€900, новий старт','agent:replace'),true);
  const offer=g.offers?.[0];
  if(offer){
    const club=CLUB_BY_ID[offer.clubId];
@@ -141,6 +202,13 @@ function life(g){
     'Двоє дорослих людей запрошують тебе на зустріч. Вибір змінить твою особисту історію.',
     opt(a.name+', '+a.age,a.job+' · '+a.vibe,'meet:'+a.id),
     opt(b.name+', '+b.age,b.job+' · '+b.vibe,'meet:'+b.id));
+ }
+ const personMemory=currentPartnerId(g)?memoryOf(g,currentPartnerId(g)):null;
+ if(personMemory?.resentment>=55&&r.stage!=='acquaintance'){
+   return event('rememberedHurt','СТОСУНКИ · НАКОПИЧЕНЕ','Старий конфлікт повернувся',
+     p.name+' пам’ятає невиконані обіцянки. Навіть щирі побачення більше не вирішують проблему.',
+     opt('Відверто вислухати','Довге примирення, -час','memory:listen'),
+     opt('Зробити паузу','Можливе розставання','memory:boundaries'),true);
  }
  if(r.tension>=65)return event('fight','СТОСУНКИ · КРИЗА','Довіра на межі',
    p.name+' говорить про дистанцію та нерозуміння. Один вечір може змінити ваші стосунки.',
@@ -215,6 +283,7 @@ function match(g){
 function limited(s,max){const words=String(s).trim().split(/\s+/);return words.slice(0,max).join(' ');}
 export function getScene(g){
  ensureStory(g);
+ updateMemoryClock(g);
  if(g.match||g.day===6)return match(g);
  const today=dateNum(g),s=g.story;
  if(s.dayKey!==String(today)){s.dayKey=String(today);s.step=0;s.active=null;}
