@@ -8,6 +8,7 @@ import {npcSnapshot} from '../npc.js';
 import {adultSnapshot} from '../adult-life.js';
 import {artForScene,artUrl} from './scene-art.js';
 import {plotSnapshot} from '../plot-engine.js';
+import {captureOutcomeState,describeChoiceOutcome} from './outcome.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
 const HERO_ART=artUrl('stadium_tunnel');
@@ -244,6 +245,44 @@ function Controls({game,scene,onChoice}){
  </div>;
 }
 
+function ChoiceOutcome({outcome,onContinue}){
+ const {changes,delayed,plot}=outcome;
+ return <motion.div className="choice-outcome-overlay" role="dialog" aria-modal="true" aria-label="Результат твого рішення"
+  initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}}>
+  <motion.div className="choice-outcome-sheet" initial={{y:32,scale:.96}} animate={{y:0,scale:1}}
+   exit={{y:18,opacity:0}} transition={{type:'spring',stiffness:340,damping:30}}>
+   <div className="outcome-kicker">РЕЗУЛЬТАТ ВИБОРУ</div>
+   {plot&&<div className="outcome-story">{plot.name} · Розділ {plot.chapter}/{plot.total}</div>}
+   <p className="outcome-situation">{outcome.context}</p>
+   <h2>{outcome.choice}</h2>
+   <div className="outcome-main">{outcome.message}</div>
+   <section className="outcome-section" aria-label="Зміни показників">
+    <h3>Що змінилося</h3>
+    {changes.length?
+     <div className="outcome-effects">{changes.map(effect=><div className={'outcome-effect '+(effect.impact>0?'benefit':effect.impact<0?'cost':'neutral')} key={effect.key}>
+       <span>{effect.label}</span><b>{effect.value}</b>
+      </div>)}</div>:
+      <p className="outcome-empty">Зараз основні показники не змінилися.</p>}
+    {outcome.totalChanges>changes.length&&<small className="outcome-more">Ще {outcome.totalChanges-changes.length} змін у журналі персонажа.</small>}
+   </section>
+   <section className="outcome-section" aria-label="Майбутні наслідки">
+    <h3>Що буде далі</h3>
+    {delayed.length?
+      <div className="outcome-future">{delayed.map((a,i)=><div key={i}><span>{a.label}</span>
+       <b>{a.days===0?'Незабаром':a.days===1?'Через 1 день':'Через '+a.days+' дн.'}</b>
+      </div>)}</div>:
+      <p className="outcome-empty">Нових відкладених подій поки не заплановано. Попередні рішення залишаються в історії.</p>}
+    {plot?.ending&&<div className="outcome-verdict">Підсумок сюжету: <strong>{plot.ending}</strong></div>}
+   </section>
+   <button className="outcome-continue" type="button" onClick={onContinue}>
+     ДАЛІ ДО ІСТОРІЇ <span>→</span>
+   </button>
+   <p className="outcome-auto">Наступна картка відкриється автоматично.</p>
+   <div className="outcome-timer" aria-hidden="true"><i/></div>
+  </motion.div>
+ </motion.div>;
+}
+
 function StartMenu({saved,onContinue,onNew}){
  const exists=!!saved;
  const club=saved&&CLUB_BY_ID[saved.clubId];
@@ -298,6 +337,7 @@ export default function App(){
  const [revision,setRevision]=useState(0);
  const [journal,setJournal]=useState(false);
  const [notice,setNotice]=useState('');
+ const [outcome,setOutcome]=useState(null);
  const timeout=useRef(null);
  const lastChoice=useRef(0);
  const scene=useMemo(()=>game?getScene(game):null,[game,revision]);
@@ -306,47 +346,56 @@ export default function App(){
  useEffect(()=>{if(game&&scene)saveGame(game);},[game,revision,scene]);
  const sceneKey=game&&scene?[game.season,game.week,game.day,game.story?.step,game.match?.turns||0,scene.id,revision].join('-'):'intro';
  const flash=useCallback(message=>{setNotice(message);clearTimeout(timeout.current);timeout.current=setTimeout(()=>setNotice(''),2100);},[]);
+ useEffect(()=>{
+   if(!outcome)return;
+   const id=setTimeout(()=>setOutcome(null),6200);
+   return()=>clearTimeout(id);
+ },[outcome]);
  const decide=useCallback(side=>{
-  if(!game||journal)return false;
+  if(!game||journal||outcome)return false;
   if(performance.now()-lastChoice.current<280)return false;
   try{
+    const shownScene=scene;
+    const before=captureOutcomeState(game);
     const result=takeChoice(game,side);
     if(result.ok){
      lastChoice.current=performance.now();
-     saveGame(game);setGame({...game});setRevision(n=>n+1);
-     flash(result.message||'Рішення прийнято.');
+     const summary=describeChoiceOutcome(before,game,shownScene,side,result);
+     saveGame(game);
+     setGame({...game});setRevision(n=>n+1);
+     setNotice('');setOutcome(summary);
      return true;
     }
     flash(result.message||'Зараз це рішення недоступне.');return false;
   }catch(error){console.error(error);flash('Не вдалося завершити вибір. Спробуй ще раз.');return false;}
- },[game,journal,flash]);
+ },[game,journal,outcome,scene,flash]);
  useEffect(()=>{
   const onKey=e=>{
    if(e.target instanceof Element&&e.target.closest('input,select,textarea'))return;
-   if(journal||!game)return;
+   if(journal||!game||outcome)return;
    if(e.key==='ArrowLeft'){e.preventDefault();decide(0);}
    if(e.key==='ArrowRight'){e.preventDefault();decide(1);}
   };
   window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
- },[decide,game,journal]);
+ },[decide,game,journal,outcome]);
  useEffect(()=>()=>clearTimeout(timeout.current),[]);
  const continueCareer=()=>{
    const old=loadGame()||savedCareer;
    if(!old){setScreen('create');return;}
-   setGame(old);setJournal(false);setNotice('');
+   setGame(old);setJournal(false);setNotice('');setOutcome(null);
    setScreen('play');setRevision(n=>n+1);
  };
  const newCareer=values=>{
    const created=makeCareer(values);
    saveGame(created);
    setSavedCareer(created);setGame(created);
-   setJournal(false);setNotice('');setScreen('play');setRevision(n=>n+1);
+   setJournal(false);setNotice('');setOutcome(null);setScreen('play');setRevision(n=>n+1);
  };
  if(screen==='menu')return <StartMenu saved={savedCareer} onContinue={continueCareer} onNew={()=>setScreen('create')}/>;
  if(screen==='create')return <Setup hasSave={!!savedCareer} onBack={()=>setScreen('menu')} onStart={newCareer}/>;
  if(!game)return <StartMenu saved={savedCareer} onContinue={continueCareer} onNew={()=>setScreen('create')}/>;
  return <div className={'app-shell tone-'+toneFor(scene)}>
-  <Header game={game} onJournal={()=>setJournal(true)} onMenu={()=>{saveGame(game);setSavedCareer(game);setJournal(false);setGame(null);setScreen('menu');}}/>
+  <Header game={game} onJournal={()=>setJournal(true)} onMenu={()=>{saveGame(game);setSavedCareer(game);setJournal(false);setOutcome(null);setGame(null);setScreen('menu');}}/>
   <main className="stage">
    <div className="stack" aria-hidden="true"><div/><div/></div>
    <AnimatePresence mode="wait"><SwipeCard key={sceneKey} scene={scene} onChoice={decide}/></AnimatePresence>
@@ -354,5 +403,6 @@ export default function App(){
   <Controls game={game} scene={scene} onChoice={decide}/>
   <AnimatePresence>{notice&&<motion.div className="notice" key={notice} role="status" initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}}>{notice}</motion.div>}</AnimatePresence>
   <AnimatePresence>{journal&&<Journal game={game} onClose={()=>setJournal(false)}/>}</AnimatePresence>
+  <AnimatePresence>{outcome&&<ChoiceOutcome key={outcome.context+'-'+outcome.choice+'-'+revision} outcome={outcome} onContinue={()=>setOutcome(null)}/>}</AnimatePresence>
  </div>;
 }
