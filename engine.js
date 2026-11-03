@@ -1,4 +1,5 @@
 import {CLUBS,CLUB_BY_ID,CONTACT_BY_ID,POSITIONS,ASSETS,fixtures,opponentFor} from './data.js';
+import {careerAccess} from './memory.js';
 export const SAVE_KEY='football-life-save-v1';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const skillAvg=p=>Math.round(Object.values(p.skills).reduce((a,b)=>a+b,0)/4);
@@ -128,7 +129,9 @@ export function buyAsset(g,id){
   note(g,`Ти придбав: ${item.name}.`,'personal');return {ok:true,message:'Покупку здійснено.'};
 }
 function makeOffer(g,id){
-  const c=CLUB_BY_ID[id],wage=Math.round((1700+c.power*29+scorePlayer(g)*12)/100)*100;
+  const c=CLUB_BY_ID[id],memory=g.story?.memory?.actors?.agent;
+  const influence=memory?clamp(1+(memory.trust-50)/500-(memory.resentment||0)/900,.78,1.18):1;
+  const wage=Math.round(((1700+c.power*29+scorePlayer(g)*12)*influence)/100)*100;
   return {id:`offer-${g.season}-${g.week}-${id}-${Math.floor(chance(g)*9999)}`,clubId:id,wage,bonus:Math.round((c.power*70+scorePlayer(g)*30)/100)*100,until:g.year+2,expiresWeek:Math.min(14,g.week+3),negotiated:false};
 }
 export function negotiate(g,id){
@@ -136,7 +139,10 @@ export function negotiate(g,id){
   if(!o)return {ok:false,message:'Пропозиція недоступна.'};
   if(o.negotiated)return {ok:false,message:'Ці переговори вже відбулися.'};
   o.negotiated=true;
-  if(chance(g)<.62+g.reputation/350){o.wage=Math.round(o.wage*1.16/100)*100;o.bonus=Math.round(o.bonus*1.12/100)*100;
+  const access=g.story?.memory?careerAccess(g):null;
+  const agent=g.story?.memory?.actors?.agent;
+  const confidence=clamp(.55+g.reputation/350+(agent?.trust??50)/500-(agent?.resentment??0)/280, .12, .91);
+  if(!access?.agentFrozen&&chance(g)<confidence){o.wage=Math.round(o.wage*1.16/100)*100;o.bonus=Math.round(o.bonus*1.12/100)*100;
     note(g,`${CLUB_BY_ID[o.clubId].name} погодився підвищити зарплату.`,'transfer');
     return {ok:true,message:'Агент домовився про підвищену зарплату.'};}
   note(g,`${CLUB_BY_ID[o.clubId].name} відхилив фінансові вимоги.`,'transfer');
@@ -171,8 +177,13 @@ function aiGoals(g,power,opponent){
 export function beginMatch(g){
   if(g.day!==6||g.match)return {ok:false,message:'Матч доступний у неділю.'};
   const fixture=currentFixture(g);if(!fixture)return {ok:false,message:'Не знайдено матч.'};
-  g.match={...fixture,turns:0,minute:0,homeGoals:0,awayGoals:0,goals:0,assists:0,actions:0,
-    rating:6.0,ball:{x:50,y:50},feed:['Свисток! Твоя кар’єра — у твоїх рішеннях.'],last:'Початок матчу'};
+  const access=g.story?.memory?careerAccess(g):null;
+  const bench=access?.benchRisk?45:0;
+  g.match={...fixture,turns:0,minute:bench,startingMinute:bench,turnLimit:bench?6:12,
+    homeGoals:0,awayGoals:0,goals:0,assists:0,actions:0,
+    rating:6.0,ball:{x:50,y:50},
+    feed:[bench?'Тренер пам’ятає конфлікт: сьогодні ти виходиш лише після перерви.':'Свисток! Твоя кар’єра — у твоїх рішеннях.'],
+    last:bench?'Ти на лаві запасних, поки тренер не довіряє.':'Початок матчу'};
   return {ok:true,message:'Матч розпочато. Обирай дію на полі.'};
 }
 export function matchAction(g,action){
@@ -180,7 +191,11 @@ export function matchAction(g,action){
   if(!['pass','dribble','shoot','press'].includes(action))return {ok:false,message:'Невідома дія.'};
   const ownHome=m.home===g.clubId,ours=ownHome?'homeGoals':'awayGoals',theirs=ownHome?'awayGoals':'homeGoals';
   const condition=clamp((g.energy-25)/100,-.15,.6),o=CLUB_BY_ID[ownHome?m.away:m.home];
-  const value=g.player.skills,opp=o.power,roll=chance(g),quality=clamp((g.form-50)/210+condition/4,-.18,.18);
+  const value=g.player.skills,opp=o.power,roll=chance(g);
+  const coach=g.story?.memory?.actors?.coach,captain=g.story?.memory?.actors?.captain;
+  const chemistry=(coach?(coach.trust-50)/430-(coach.resentment||0)/900:0)
+    +(captain?(captain.loyalty-10)/550-(captain.resentment||0)/1050:0);
+  const quality=clamp((g.form-50)/210+condition/4+chemistry,-.24,.28);
   let line='';
   const scoring=(base)=>chance(g)<clamp(base+(scorePlayer(g)-opp)/220+quality,.03,.66);
   if(action==='pass'){
@@ -206,9 +221,9 @@ export function matchAction(g,action){
   const enemyChance=clamp(.12+(opp-scorePlayer(g))/170+g.stress/600,.03,.31);
   if(chance(g)<enemyChance){m[theirs]++;line+=' Суперник відповідає голом.';}
   else if(chance(g)<.08){m[ours]++;line+=' Команда забиває після колективної атаки!';}
-  m.turns++;m.minute=Math.min(90,m.turns*8);m.last=line;m.feed.unshift(`${m.minute}' · ${line}`);m.feed=m.feed.slice(0,9);m.rating=clamp(m.rating,4.5,10);
+  m.turns++;m.minute=Math.min(90,(m.startingMinute||0)+m.turns*(m.turnLimit===6?8:8));m.last=line;m.feed.unshift(`${m.minute}' · ${line}`);m.feed=m.feed.slice(0,9);m.rating=clamp(m.rating,4.5,10);
   m.ball={x:clamp(12+chance(g)*77,8,92),y:clamp(10+chance(g)*80,8,92)};
-  if(m.turns>=12)return finishMatch(g);
+  if(m.turns>=(m.turnLimit||12))return finishMatch(g);
   return {ok:true,message:line};
 }
 function finishMatch(g){
@@ -223,7 +238,7 @@ function finishMatch(g){
   const earned=g.contract.wage+g.contract.bonus*m.goals+Math.round(g.contract.bonus*.7)*m.assists;
   const ownScore=ownHome?m.homeGoals:m.awayGoals,oppScore=ownHome?m.awayGoals:m.homeGoals;
   g.money+=earned;
-  const s=g.seasonStats;s.matches++;s.goals+=m.goals;s.assists+=m.assists;s.minutes+=90;s.ratingSum+=m.rating;
+  const s=g.seasonStats;s.matches++;s.goals+=m.goals;s.assists+=m.assists;s.minutes+=90-(m.startingMinute||0);s.ratingSum+=m.rating;
   g.career.matches++;g.career.goals+=m.goals;g.career.assists+=m.assists;
   g.form=clamp(g.form+(m.rating-6.5)*3,30,99);
   g.morale=clamp(g.morale+(ownScore>oppScore?7:ownScore===oppScore?1:-6),0,100);
