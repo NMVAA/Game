@@ -5,7 +5,7 @@ import {ensureStory,makeCareer,getScene,takeChoice} from './story.js';
 const app=document.getElementById('app');
 const esc=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 const pct=n=>Math.max(0,Math.min(100,Math.round(n||0)));
-let game=loadGame(),busy=false,notice='',history=false,gesture=null;
+let game=loadGame(),busy=false,notice='',history=false,gesture=null,noticeTimer=null;
 if(game)ensureStory(game);
 const visual={
  training:{icon:'◈',shade:'pitch'},'training-rest':{icon:'✦',shade:'pitch'},
@@ -95,8 +95,9 @@ function decide(side){
   const r=takeChoice(game,side);
   if(!r.ok){notice=r.message;render();busy=false;return;}
   saveGame(game);notice=r.message||'Твоє рішення змінить майбутнє.';
-  // Immediately advance to the next chapter. Outcome remains visible briefly.
-  render();
+  // Immediately advance, then dismiss the short consequence notice.
+  render();clearTimeout(noticeTimer);
+  noticeTimer=setTimeout(()=>{notice='';document.querySelector('.outcome')?.remove();},2300);
  }catch(error){
   console.error(error);notice='Ситуація не відкрилася. Спробуй перезавантажити сторінку.';render();
  }finally{busy=false;}
