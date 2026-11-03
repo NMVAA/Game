@@ -5,6 +5,7 @@ import {initNpcWorld,advanceNpcWorld} from './npc.js';
 import {npcScene,resolveNpcChoice} from './npc-scenes.js';
 import {initAdultLife,adultRelationshipScene,adultNightScene,adultPendingScene,resolveAdultChoice} from './adult-life.js';
 import {advancePlots,initPlots,plotScene,resolvePlotChoice} from './plot-engine.js';
+import {initRpg,awardXp,perkLevelScene,choosePerk,rpgBonus} from './rpg.js';
 
 const cap=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
 const roll=g=>{g.seed=(Math.imul(g.seed,1664525)+1013904223)>>>0;return g.seed/4294967296;};
@@ -26,20 +27,20 @@ function record(g,label,result){
   timeline(g,result,'story');
 }
 export function ensureStory(g){
- if(g.story?.version===3){initMemory(g);initNpcWorld(g);initAdultLife(g);return g.story;}
+ if(g.story?.version===3){initMemory(g);initNpcWorld(g);initAdultLife(g);initRpg(g);return g.story;}
  // Migrate existing Football Life careers without replacing their decisions,
  // money, relationships, previous scandals or scheduled story events.
  if(g.story?.version===2){
    g.story.version=3;
    g.story.pending ||= [];g.story.flags ||= {};g.story.journal ||= [];
-   initMemory(g);initNpcWorld(g);initAdultLife(g);
+   initMemory(g);initNpcWorld(g);initAdultLife(g);initRpg(g);
    return g.story;
  }
  g.story={version:3,step:0,dayKey:'',pending:[],flags:{},journal:[],
    agentTrust:58,clubTrust:58,media:22,privacy:68,temptation:0,sponsor:0,
    scandal:0,financialPressure:0,romanceHeat:0,focus:55,agentDeal:false,
    lastEvent:'',matches:0};
- initMemory(g);initNpcWorld(g);initAdultLife(g);return g.story;
+ initMemory(g);initNpcWorld(g);initAdultLife(g);initRpg(g);return g.story;
 }
 function training(g){
  const role=POSITIONS.find(x=>x.id===g.position)?.focus||'passing';
@@ -309,11 +310,12 @@ export function getScene(g){
  updateMemoryClock(g);
  advanceNpcWorld(g);
  advancePlots(g);
- if(g.match||g.day===6)return match(g);
+ if(g.match||g.day===6)return perkLevelScene(g)||match(g);
  const today=dateNum(g),s=g.story;
  if(s.dayKey!==String(today)){s.dayKey=String(today);s.step=0;s.active=null;}
  if(s.active)return s.active;
- let scene;
+ let scene=perkLevelScene(g);
+ if(scene){s.active=scene;return scene;}
  if(s.step===0)scene=training(g);
  else if(s.step===1)scene=pendingEvent(g)||agent(g);
  else if(s.step===2)scene=adultRelationshipScene(g)||life(g);
@@ -328,8 +330,10 @@ export function takeChoice(g,side){
  const s=g.story,scene=getScene(g),selected=scene[side===0?'a':'b'];
  if(!selected)return {ok:false,message:'Немає такого рішення.'};
  const id=selected.id;
+ const previousTrust=g.personal?.trust||0,previousStress=g.stress;
  let result={ok:true,message:'Рішення прийнято.'},advance=true;
- if(id.startsWith('plot:'))result=resolvePlotChoice(g,id);
+ if(id.startsWith('rpg:')){result=choosePerk(g,id);advance=false;}
+ else if(id.startsWith('plot:'))result=resolvePlotChoice(g,id);
  else if(id.startsWith('npc:'))result=resolveNpcChoice(g,id);
  else if(id.startsWith('adult:'))result=resolveAdultChoice(g,id);
  else if(id.startsWith('train:')){
@@ -666,6 +670,24 @@ export function takeChoice(g,side){
  }
  else if(id==='match:wait'||id==='match:recover'){advance=false;if(id==='match:recover')stat(g,{energy:5});}
  if(!result.ok){return result;}
+ if(!result.noXp){
+   // Perks alter real story consequences as well as match and contract rules.
+   if((id.startsWith('adult:')||id.startsWith('relation:')||id.startsWith('date:'))
+      &&g.personal?.personId &&g.personal.trust>previousTrust)
+     g.personal.trust=cap(g.personal.trust+rpgBonus(g,'relationship'));
+   if(id==='coach:stay'||id==='captain:private')
+     s.clubTrust=cap(s.clubTrust+rpgBonus(g,'relationship'));
+   if(g.stress>previousStress)
+     g.stress=cap(g.stress-Math.min(g.stress-previousStress,rpgBonus(g,'stress')));
+ }
+ const xpAmount=scene.id==='match'?(result.finished?36:6):
+    scene.plot?26+(result.check?.success?9:0):
+    id.startsWith('npc:')?19:
+    id.startsWith('adult:')?17:
+    id.startsWith('train:')?18:
+    id.startsWith('relation:')?17:13;
+ const experience=result.noXp?null:awardXp(g,xpAmount,scene.plot?
+   scene.plot.name+' · '+scene.plot.phase:scene.id==='match'?'Матч':scene.title);
  const before=scene.title;
  const summary=result.message==='Рішення прийнято.'?selected.sub:result.message;
  record(g,(scene.plot?'['+scene.plot.name+' · '+scene.plot.phase+'] ':'')+before+' — '+selected.label,summary);
@@ -686,6 +708,7 @@ export function takeChoice(g,side){
    social(g,{bond:-12,trust:-9});
    postpone(g,'partnerDoubt',1);
  }
- return {ok:true,message:summary,scene:before};
+ return {ok:true,message:summary,scene:before,
+   rpgXp:experience,rpgCheck:result.check||null,rpgPerk:result.rpgPerk||null};
 }
 export function restartStory(g){ensureStory(g);g.story.step=0;g.story.dayKey='';g.story.active=null;}
