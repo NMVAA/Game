@@ -1,5 +1,6 @@
 import * as T from '../vendor/three.module.js';
 import { seeded, inside, closestRoad, collisionAt, distance } from './core.mjs';
+import {visualLandcoverSites} from './landscape.mjs';
 export { T };
 const palette = ['#c8b4a1','#b8c2bb','#c4bfb0','#d3c4af','#a9b7c0','#cebcae'];
 function noiseTexture(base, spread = 18) {
@@ -77,13 +78,24 @@ export async function buildWorld(scene,world,onProgress=()=>{}) {
       if(abs(vN.y)>.7)diffuseColor.rgb*=.65;
     `).replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=vec3(1.,.6,.23)*win*lit*uNight*.9;');
   };
-  const chunks=new Map();
+  const chunks=new Map(),roofChunks=new Map();
+  const roofPalette=['#736d66','#9b8176','#999992','#786d66','#ad9b86','#717d81'];
   for(let i=0;i<world.buildings.length;i++){const b=world.buildings[i],shape=new T.Shape(b.poly.map(p=>new T.Vector2(p.x,-p.z))),geo=new T.ExtrudeGeometry(shape,{depth:b.height,bevelEnabled:false,curveSegments:1,steps:1});geo.rotateX(-Math.PI/2);
-    const key=`${Math.floor(b.minX/220)},${Math.floor(b.minZ/220)}`;if(!chunks.has(key))chunks.set(key,[]);chunks.get(key).push([geo,new T.Color(palette[Math.floor(b.color*palette.length)])]);
+    const key=`${Math.floor(b.minX/220)},${Math.floor(b.minZ/220)}`;
+    if(!chunks.has(key))chunks.set(key,[]);
+    chunks.get(key).push([geo,new T.Color(palette[Math.floor(b.color*palette.length)])]);
+    // A separate roof surface breaks up the previous monochrome extrusions.
+    // Roof colour is an artistic material choice, not a surveyed roof attribute.
+    const roof=new T.ShapeGeometry(shape);
+    roof.rotateX(-Math.PI/2);roof.translate(0,b.height+.035,0);
+    if(!roofChunks.has(key))roofChunks.set(key,[]);
+    roofChunks.get(key).push([roof,new T.Color(roofPalette[Math.floor(b.color*roofPalette.length)])]);
     if(i%160===0){onProgress(.2+i/world.buildings.length*.4);await new Promise(r=>setTimeout(r,0));}
   }
   for(const list of chunks.values()){const m=new T.Mesh(mergeGeometries(list),walls);m.castShadow=true;m.receiveShadow=true;scene.add(m);}
-  const rng=seeded(634),trees=[],trunks=[],lampPosts=[],lampHeads=[];
+  const roofMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.92,side:T.DoubleSide});
+  for(const list of roofChunks.values()){const mesh=new T.Mesh(mergeGeometries(list),roofMat);mesh.receiveShadow=true;scene.add(mesh);}
+  const rng=seeded(634),trees=[],trunks=[],conifers=[],understory=[],lampPosts=[],lampHeads=[];
   for(const r of world.roads.filter(r=>r.drive&&r.width>=7))for(let i=1;i<r.points.length;i++){
     const a=r.points[i-1],b=r.points[i],len=distance(a,b);if(len<25)continue;const nx=(b.z-a.z)/len,nz=-(b.x-a.x)/len;
     for(let d=16;d<len;d+=28){const t=d/len;
@@ -93,11 +105,24 @@ export async function buildWorld(scene,world,onProgress=()=>{}) {
     }
     for(let d=10;d<len;d+=65){const t=d/len,off=r.width*.5+1,x=a.x+(b.x-a.x)*t+nx*off,z=a.z+(b.z-a.z)*t+nz*off;lampPosts.push([x,3.6,z,0,1,1,1]);lampHeads.push([x,7.25,z,0,1,1,1]);}
   }
+  // Satellite-guided vegetation is concentrated west of Centralna 59,
+  // while the exact road and building clearances remain driven by OSM.
+  const landcover=visualLandcoverSites(world,{maxTrees:310,maxShrubs:460});
+  for(const t of landcover.trees){
+    if(t.kind==='conifer')conifers.push([t.x,4.5,t.z,t.tone*6.28,t.radius,t.height*.67,t.radius]);
+    else trees.push([t.x,t.height+1.6,t.z,t.tone*6.28,t.radius,t.height*.78,t.radius]);
+    trunks.push([t.x,1.5,t.z,0,1,1,1]);
+    const o={x:t.x,z:t.z,circle:true,radius:.2};
+    world.obstacles.insert(o,t.x-.3,t.z-.3,t.x+.3,t.z+.3);
+  }
+  for(const s of landcover.shrubs)understory.push([s.x,s.height*.5,s.z,s.tone*6.28,s.radius,s.height*.6,s.radius]);
   instances(new T.CylinderGeometry(.16,.22,3,6),new T.MeshStandardMaterial({color:'#6b5944',roughness:1}),trunks);
   instances(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#557647',roughness:1,flatShading:true}),trees);
+  instances(new T.ConeGeometry(1,2,8),new T.MeshStandardMaterial({color:'#476653',roughness:1,flatShading:true}),conifers);
+  instances(new T.IcosahedronGeometry(1,0),new T.MeshStandardMaterial({color:'#5f7f52',roughness:1,flatShading:true}),understory,false);
   instances(new T.CylinderGeometry(.07,.12,7.2,5),new T.MeshStandardMaterial({color:'#667077',metalness:.6,roughness:.5}),lampPosts,false);
   const lampMat=new T.MeshStandardMaterial({color:'#ece9d0',emissive:'#ffcc7e',emissiveIntensity:.05});instances(new T.BoxGeometry(.75,.14,.4),lampMat,lampHeads,false);
-  onProgress(1);return {setNight(n){uniforms.night.value=n?1:0;lampMat.emissiveIntensity=n?2:.05;},trees:trees.length};
+  onProgress(1);return {setNight(n){uniforms.night.value=n?1:0;lampMat.emissiveIntensity=n?2:.05;},trees:trees.length+conifers.length,landscape:{...landcover.metadata,roofCount:world.buildings.length}};
 }
 function roundedBox(w,h,l,r=.1){const s=new T.Shape();s.moveTo(-w/2+r,-h/2);s.lineTo(w/2-r,-h/2);s.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);s.lineTo(w/2,h/2-r);s.quadraticCurveTo(w/2,h/2,w/2-r,h/2);s.lineTo(-w/2+r,h/2);s.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);s.lineTo(-w/2,-h/2+r);s.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);const g=new T.ExtrudeGeometry(s,{depth:l,bevelEnabled:true,bevelSize:.04,bevelThickness:.04,bevelSegments:1,steps:1,curveSegments:3});g.translate(0,0,-l/2);return g;}
 export function makeCar(color='#268c9c',detailed=true){
