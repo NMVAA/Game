@@ -22,7 +22,7 @@ const groups = {
     'travel','adultWork','adultWorkUltimatum'
   ],
   romance: [
-    'meet','date','commit','moveIn','wedding','adultFlirt','adultFriends',
+    'meet','date','commit','moveIn','wedding','adultFlirt','adultFriends','memoryPromise',
     'npcPartnerPlans'
   ],
   intimacy: [
