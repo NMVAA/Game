@@ -169,17 +169,23 @@ function socialTurn(g,w,a,day){
  if(isPartner){
   a.relationshipStatus=g.personal.stage;
   const memory=initMemory(g).actors['partner:'+person];
-  if((memory?.resentment||0)>35 || g.personal.trust<38){
+  const adult=g.story?.adult?.people?.[person];
+  const safety=adult?.emotionalSafety??50;
+  const careerPressure=adult?.workPressure??30;
+  const secrecy=adult?.hiddenHistory??0;
+  if((memory?.resentment||0)>35 || g.personal.trust<38 || (safety<32&&secrecy>30)){
    decide(w,a,g,day,'relationship-distance',a.name+' самостійно вирішив(ла) взяти дистанцію.');
    signal(g,'npcPartnerDistance',1,{actor:a.id,partnerId:person},'npc-partner-distance-'+day);
-  }else if(a.goalProgress>=65){
+  }else if(a.goalProgress>=65 || careerPressure>=70){
    a.goalProgress=0;
+   if(adult)adult.workPressure=clamp(adult.workPressure-20);
    const other=select(g,CLUBS.filter(c=>c.id!==g.clubId));
    a.targetCity=other.city;
    decide(w,a,g,day,'career-offer',a.name+' '+ambitions[person]+' у місті '+other.city+'.');
    signal(g,'npcPartnerCareer',1,{actor:a.id,partnerId:person,city:other.city},'npc-partner-career-'+day);
   }else{
-   a.stress=clamp(a.stress+4);
+   a.stress=clamp(a.stress+4+(adult?.independence??50)/50);
+   if(adult)adult.circle=clamp((adult.circle||48)+2);
    decide(w,a,g,day,'independent-evening',a.name+' провів(ла) вечір із друзями, не чекаючи твого рішення.');
    signal(g,'npcPartnerPlans',2,{actor:a.id,partnerId:person},'npc-partner-plans-'+day);
   }
