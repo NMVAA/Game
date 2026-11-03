@@ -444,36 +444,71 @@ export function takeChoice(g,side){
    if(currentPartnerId(g)){social(g,{bond:8});remember(g,currentPartnerId(g),'kept_date','Ти дотримав особистої домовленості.',{trust:8,affinity:6,loyalty:6});}
    else stat(g,{energy:5});
  }
- else if(id==='interview:open'){s.media=cap(s.media+12);s.privacy=cap(s.privacy-14);stat(g,{reputation:3,stress:3});if(roll(g)<.24)postpone(g,'agentLeak',3);}
+ else if(id==='interview:open'){s.media=cap(s.media+12);s.privacy=cap(s.privacy-14);stat(g,{reputation:3,stress:3});
+   remember(g,'press','public_interview','Ти публічно обговорив приватні питання.',{affinity:6,trust:4});
+   if(roll(g)<.24)postpone(g,'agentLeak',3);
+ }
  else if(id==='interview:quiet'){s.privacy=cap(s.privacy+6);s.media=cap(s.media-3);}
- else if(id==='agent:yes'){s.agentTrust=cap(s.agentTrust+12);s.agentDeal=true;stat(g,{stress:4});postpone(g,'agentLeak',3);}
- else if(id==='agent:no'){s.agentTrust=cap(s.agentTrust-7);s.agentDeal=false;s.privacy=cap(s.privacy+6);}
+ else if(id==='agent:yes'){
+   s.agentDeal=true;stat(g,{stress:4});postpone(g,'agentLeak',3);
+   remember(g,'agent','secret_pact','Ти погодився на конфіденційну угоду з агентом.',{trust:12,loyalty:9});
+   remember(g,'coach','secret_negotiations','Ти не повідомив тренеру про переговори.',{trust:-4,resentment:5});
+   queueArc(g,'memoryBoard',11,{},'board-deal-'+dateNum(g));
+ }
+ else if(id==='agent:no'){
+   s.agentDeal=false;s.privacy=cap(s.privacy+6);
+   remember(g,'agent','rejected_pact','Ти відмовився від закритої угоди.',{trust:-8,resentment:6});
+   queueArc(g,'memoryAgent',8,{},'agent-distance-'+dateNum(g));
+ }
  else if(id==='sponsor:meet'){postpone(g,'sponsor',2);stat(g,{stress:2});}
  else if(id==='sponsor:skip')stat(g,{form:3,reputation:-1});
  else if(id==='photo:honest'){s.scandal=cap(s.scandal-20);s.privacy=cap(s.privacy-8);stat(g,{reputation:-4,stress:5});if(partner(g))social(g,{trust:6,tension:3});}
  else if(id==='photo:deny'){s.scandal=cap(s.scandal+22);stat(g,{reputation:1,stress:8});postpone(g,'partnerDoubt',3);}
  else if(id==='sponsor:accept'){stat(g,{money:5200,reputation:5});s.sponsor=1;s.privacy=cap(s.privacy-10);}
  else if(id==='sponsor:reject'){s.privacy=cap(s.privacy+5);stat(g,{morale:2});}
- else if(id==='leak:investigate'){s.agentTrust=cap(s.agentTrust-16);stat(g,{stress:7});if(roll(g)<.55){s.scandal=cap(s.scandal-12);result={ok:true,message:'Розслідування виявило непрофесійність агента.'};}}
- else if(id==='leak:quiet'){s.scandal=cap(s.scandal+8);stat(g,{stress:-3});if(roll(g)<.45)postpone(g,'photo',4);}
+ else if(id==='leak:investigate'){stat(g,{stress:7});
+   remember(g,'agent','investigated_leak','Ти відкрито звинуватив агента у витоку інформації.',{trust:-15,resentment:17});
+   if(roll(g)<.55){s.scandal=cap(s.scandal-12);result={ok:true,message:'Розслідування виявило непрофесійність агента.'};}
+   queueArc(g,'memoryAgent',8,{},'leak-agent-'+dateNum(g));
+ }
+ else if(id==='leak:quiet'){s.scandal=cap(s.scandal+8);stat(g,{stress:-3});
+   remember(g,'agent','covered_leak','Ти захистив агента попри чутки.',{trust:7,loyalty:10});
+   if(roll(g)<.45)postpone(g,'photo',4);
+   queueArc(g,'memoryBoard',13,{},'board-leak-'+dateNum(g));
+ }
  else if(id==='doubt:truth'){social(g,{trust:7,tension:14,bond:-3});s.scandal=cap(s.scandal-9);}
  else if(id==='doubt:hide'){social(g,{trust:-19,tension:19});s.scandal=cap(s.scandal+8);}
  else if(id==='rehab:rest'){stat(g,{energy:19,form:-5,stress:-6});}
  else if(id==='rehab:play'){stat(g,{form:4,energy:-23,stress:10});if(roll(g)<.4)stat(g,{form:-10,energy:-10});}
- else if(id==='mentor:talk'){s.clubTrust=cap(s.clubTrust+11);stat(g,{morale:4});}
- else if(id==='mentor:stand'){s.clubTrust=cap(s.clubTrust-12);stat(g,{reputation:2,stress:3});}
- else if(id==='move:compromise'){if(g.money>=850)stat(g,{money:-850});social(g,{trust:12,bond:6,tension:-7});}
- else if(id==='move:career'){social(g,{trust:-13,bond:-9,tension:15});stat(g,{form:4});}
+ else if(id==='mentor:talk'){s.clubTrust=cap(s.clubTrust+11);stat(g,{morale:4});
+   remember(g,'captain','reconciled','Ти спробував помиритися з капітаном.',{trust:13,resentment:-14,loyalty:8});
+ }
+ else if(id==='mentor:stand'){s.clubTrust=cap(s.clubTrust-12);stat(g,{reputation:2,stress:3});
+   remember(g,'captain','defied_mentor','Ти наполіг на своїй позиції після конфлікту.',{trust:-10,resentment:14});
+   queueArc(g,'memoryTeam',10,{},'mentor-row-'+dateNum(g));
+ }
+ else if(id==='move:compromise'){if(g.money>=850)stat(g,{money:-850});social(g,{trust:12,bond:6,tension:-7});
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'move_together','Ти врахував плани партнера при переїзді.',{trust:12,affinity:8,loyalty:12,resentment:-7});
+ }
+ else if(id==='move:career'){social(g,{trust:-13,bond:-9,tension:15});stat(g,{form:4});
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'move_alone','Ти поставив кар’єру вище спільних планів.',{trust:-13,resentment:17,loyalty:-11});
+   queueArc(g,'memoryRelationship',15,{actor:currentPartnerId(g)},'move-backlash-'+dateNum(g));
+ }
  else if(id==='finance:invest'){if(g.money>=900){stat(g,{money:-900});setFlag(g,'investment',900);postpone(g,'investment',4);}else result={ok:false,message:'Немає €900 для інвестиції.'};}
  else if(id==='finance:save')stat(g,{stress:-2});
  else if(id==='invest:sell'){const change=roll(g)<.5?-230:520;stat(g,{money:900+change});setFlag(g,'investment',0);result={ok:true,message:'Ти закрив інвестицію: '+(change>=0?'+':'')+formatCash(change)+'.'};}
  else if(id==='invest:hold'){if(roll(g)<.52)stat(g,{money:70});else stat(g,{stress:5});postpone(g,'investment',5);}
  else if(id==='night:party'){
   stat(g,{money:-Math.min(g.money,340),morale:9,energy:-16,stress:6});s.media=cap(s.media+9);
-  if(partner(g))social(g,{tension:10});
+  if(partner(g)){
+    social(g,{tension:10});
+    remember(g,currentPartnerId(g),'unannounced_party','Ти не попередив партнера про нічну вечірку.',{trust:-6,resentment:10});
+  }
   if(roll(g)<.32){postpone(g,'photo',2);s.scandal=cap(s.scandal+11);}
  }
- else if(id==='night:home'){stat(g,{energy:15,stress:-7});s.clubTrust=cap(s.clubTrust-2);}
+ else if(id==='night:home'){stat(g,{energy:15,stress:-7});s.clubTrust=cap(s.clubTrust-2);
+   if(currentPartnerId(g))remember(g,currentPartnerId(g),'rest_at_home','Ти обрав тихий вечір удома.',{trust:3,affinity:4});
+ }
  else if(id==='night:rest')stat(g,{energy:20,stress:-10});
  else if(id==='night:extra'){stat(g,{form:5,energy:-13,stress:4});if(g.energy<40)postpone(g,'rehab',2);}
  else if(id==='night:media'){stat(g,{reputation:4,stress:5});s.privacy=cap(s.privacy-11);if(roll(g)<.2)postpone(g,'agentLeak',4);}
@@ -481,7 +516,7 @@ export function takeChoice(g,side){
  else if(id==='public:talk'){s.scandal=cap(s.scandal-12);stat(g,{reputation:-2,stress:3});}
  else if(id==='public:ignore'){s.scandal=cap(s.scandal+9);stat(g,{stress:5});}
  else if(id==='match:wait'||id==='match:recover'){advance=false;if(id==='match:recover')stat(g,{energy:5});}
- if(!result.ok){s.active=null;return result;}
+ if(!result.ok){return result;}
  const before=scene.title;
  const summary=result.message==='Рішення прийнято.'?selected.sub:result.message;
  record(g,before+' — '+selected.label,summary);
