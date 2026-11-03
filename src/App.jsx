@@ -5,6 +5,7 @@ import {loadGame,saveGame,gameClock,scorePlayer} from '../engine.js';
 import {ensureStory,getScene,makeCareer,takeChoice} from '../story.js';
 import {memorySummary} from '../memory.js';
 import {npcSnapshot} from '../npc.js';
+import {adultSnapshot} from '../adult-life.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
 const kinds={
@@ -15,6 +16,11 @@ const kinds={
  memoryBoard:'contract',memoryEvidence:'media',memoryAgent:'contract',memoryPromise:'romance',memorySelection:'stadium',
  memoryTeam:'stadium',memoryRelationship:'romance',rememberedHurt:'romance',memoryRelocation:'romance',
  memoryOpportunity:'stadium',agentFreeze:'contract',
+ adultFlirt:'romance',adultCrisis:'romance',adultBoundaries:'romance',adultIntimacy:'romance',
+ adultPrivacy:'media',adultWork:'romance',adultFinances:'contract',adultFriends:'night',
+ adultHonesty:'romance',adultNightClub:'night',adultSecret:'night',adultPressure:'media',
+ adultAftercare:'romance',adultPhoto:'media',adultWorkUltimatum:'romance',adultSecretDiscovery:'romance',
+ adultMediaLeak:'media',adultBudget:'contract',adultRepair:'romance',
  npcCoachContest:'stadium',npcCoachPromotion:'stadium',npcCoachDrill:'stadium',
  npcAgentSecret:'contract',npcAgentContact:'contract',npcCaptainAlliance:'stadium',npcTeamBond:'stadium',
  npcRivalCompetition:'stadium',npcRivalTransfer:'contract',npcPartnerDistance:'romance',
@@ -105,7 +111,7 @@ function Meter({label,value,warn}){
  return <div className="meter"><div><small>{label}</small><b>{Math.round(clamp(value))}%</b></div><i><em style={{width:clamp(value)+'%',background:warn?'#f5a48f':'#b8f56d'}}/></i></div>;
 }
 function Journal({game,onClose}){
- const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game);
+ const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game),adult=adultSnapshot(game);
  return <motion.div className="journal-overlay" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}>
   <motion.section className="journal-panel" role="dialog" aria-modal="true" aria-label="Історія та наслідки" initial={{y:85}} animate={{y:0}} exit={{y:85}} transition={{type:'spring',stiffness:300,damping:28}} onClick={e=>e.stopPropagation()}>
     <div className="journal-title"><div><small>FOOTBALL LIFE</small><h2>Твої наслідки</h2></div><button type="button" onClick={onClose}>✕</button></div>
@@ -121,6 +127,26 @@ function Journal({game,onClose}){
       {mem.promises.length>0&&<div className="memory-promises"><strong>НЕВИКОНАНІ ОБІЦЯНКИ</strong>{mem.promises.map(p=><p key={p.id}>{p.label}: {p.text}</p>)}</div>}
       <div className="memory-access"><span>Тренер: {mem.access.selection}</span><span>Агент: {mem.access.agentStatus}</span></div>
     </details>
+    <details className="adult-details">
+      <summary>ОСОБИСТЕ ЖИТТЯ 21+ <span>{adult.choices} рішень · Ризик чуток {Math.round(adult.privacyRisk)}%</span></summary>
+      {adult.active?
+      <div className="adult-overview">
+       <strong>{adult.active.name}, {adult.active.age} · {({acquaintance:'Знайомство',relationship:'Стосунки',living:'Спільне життя',married:'Шлюб'})[adult.active.stage]||'Особисте життя'}</strong>
+       <div className="adult-meters">
+        <span>Довіра <b>{Math.round(adult.active.trust)}%</b></span>
+        <span>Близькість <b>{Math.round(adult.active.bond)}%</b></span>
+        <span>Комфорт <b>{Math.round(adult.active.values.intimacyComfort)}%</b></span>
+        <span>Особисті межі <b>{Math.round(adult.active.values.sharedBoundaries)}%</b></span>
+        <span>Підтримка роботи <b>{Math.round(adult.active.values.workSupported)}%</b></span>
+        <span>Напруга <b>{Math.round(adult.active.tension)}%</b></span>
+       </div>
+       <p>Стосунки залежать від взаємної згоди, чесності, свободи та кар’єрних рішень обох людей.</p>
+      </div>:
+      <p className="adult-empty">Зараз ти вільний. Нове знайомство може змінити твій світ.</p>}
+      <div className="adult-history">
+       {adult.history.map((h,i)=><div key={i}><small>Ігровий день {h.day}</small><p>{h.text}</p></div>)}
+      </div>
+     </details>
     <details className="npc-details">
       <summary>ЖИВИЙ СВІТ <span>{world.news.length} останніх дій NPC</span></summary>
       <div className="npc-characters">
