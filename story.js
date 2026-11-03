@@ -604,7 +604,7 @@ export function takeChoice(g,side){
  else if(id==='memory:boundaries'){
    const p=currentPartnerId(g);
    if(p)remember(g,p,'new_boundaries','Ти обрав дистанцію замість примирення.',{trust:-12,resentment:12,loyalty:-8});
-   stat(g,{focus:0,form:3,stress:4});
+   stat(g,{form:3,stress:4});
    if(g.personal.personId&&g.personal.trust<18){
      const departed=currentPartnerId(g);
      remember(g,departed,'relationship_end','Невиконані обіцянки призвели до розриву.',{loyalty:-10});
