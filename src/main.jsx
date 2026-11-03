@@ -1,20 +1,15 @@
 import React from 'react';
 import {createRoot} from 'react-dom/client';
-import {registerSW} from 'virtual:pwa-register';
 import App from './App.jsx';
 import './app.css';
 
-// Keep the installed PWA up to date without deleting the local career save.
-if ('serviceWorker' in navigator) {
-  const update = registerSW({
-    immediate: true,
-    onNeedRefresh() { update(true); },
-    onRegisteredSW(_url,registration) {
-      registration?.update().catch(()=>{});
-      document.addEventListener('visibilitychange',()=>{
-        if(!document.hidden)registration?.update().catch(()=>{});
-      });
-    }
-  });
+// Development builds intentionally do not register a Service Worker.
+// Unregister an older Football Life worker without touching localStorage.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations()
+    .then(registrations=>registrations.filter(reg=>{
+      try{return new URL(reg.scope).pathname.startsWith('/Game/');}catch{return false;}
+    }).forEach(reg=>reg.unregister()))
+    .catch(error=>console.warn('Old worker cleanup unavailable',error));
 }
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<App/>);
