@@ -144,9 +144,13 @@ export function adultRelationshipScene(g){
  const ctx=current(g);if(!ctx)return null;
  const a=initAdultLife(g),now=storyDay(g);
  if(a.lastChoiceDay===now)return null;
- // Allow existing milestone scenes, but make adult relationship development
- // substantial and varied over repeated days.
- if(['acquaintance'].includes(g.personal.stage))return named(g,'relationship');
+ // Do not suppress the existing commitment, moving-in or marriage milestones.
+ // They must remain reachable at the required trust/bond thresholds.
+ const r=g.personal;
+ if((r.stage==='acquaintance'&&r.bond>=40&&r.trust>=35)||
+    (r.stage==='relationship'&&r.bond>=66&&r.trust>=52)||
+    (r.stage==='living'&&r.bond>=87&&r.trust>=70))return null;
+ if(r.stage==='acquaintance')return named(g,'relationship');
  if(g.personal.tension>=72)return named(g,'relationship');
  if(now%3===0 || (ctx.values.hiddenHistory>=15 && now%2===0))return named(g,'relationship');
  return null;
@@ -204,9 +208,18 @@ export function adultPendingScene(g,item){
 export function resolveAdultChoice(g,id){
  const parts=id.split(':'),type=parts[1],action=parts[2];
  const ctx=current(g);
- if(!ctx)return {ok:false,message:'Особиста історія змінилася. Ця ситуація вже недоступна.'};
- const {id:personId,values:v,person:p}=ctx;
  const state=initAdultLife(g),day=storyDay(g);
+ // Press stories can outlive a breakup: public reputation survives relationships.
+ if(!ctx&&type==='media'){
+   if(action==='boundaries'){state.privacyRisk=clamp(state.privacyRisk-18);add(g,{reputation:-3,stress:4});}
+   else {state.privacyRisk=clamp(state.privacyRisk+12);add(g,{reputation:4,stress:6});}
+   state.lastChoiceDay=day;state.choiceCount++;
+   const message=action==='boundaries'?'Ти захистив приватність навіть після розриву.':'Преса отримала коментар. Колишні стосунки ще впливають на репутацію.';
+   trace(g,'media:'+action,message);
+   return {ok:true,message};
+ }
+ if(!ctx)return {ok:false,message:'Особиста історія змінилася. Ця ситуація вже недоступна.'};
+ const {id:personId,values:v}=ctx;
  const result=message=>{
   state.lastChoiceDay=day;state.choiceCount++;state.lastScene=type;
   trace(g,type+':'+action,message);
