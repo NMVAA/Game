@@ -144,7 +144,7 @@ function Journal({game,onClose}){
        <p>{plots.nextUnlocked.length?plots.nextUnlocked.join(' · '):'Усі основні історії вже відкрито'}</p>
      </div>
     </details>
-    <details className="memory-details" open><summary>ПАМ’ЯТЬ ПЕРСОНАЖІВ <span>{mem.promises.length} обіцянок · {mem.consequences} майбутніх наслідків</span></summary>
+    <details className="memory-details"><summary>ПАМ’ЯТЬ ПЕРСОНАЖІВ <span>{mem.promises.length} обіцянок · {mem.consequences} майбутніх наслідків</span></summary>
       <div className="memory-actors">
       {mem.actors.filter(a=>a.id==='coach'||a.id==='agent'||a.id==='captain'||a.id.startsWith('partner:')).map(a=>
         <div className="memory-actor" key={a.id}>
