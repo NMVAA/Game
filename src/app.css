@@ -201,3 +201,44 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .adult-history p{font-size:11px;line-height:1.45;color:#f5e3f0;margin:5px 0 0}
 .adult-empty{font-size:12px;line-height:1.5;color:#dfc8d6}
 @media(max-height:650px){.adult-details{max-height:32dvh}.adult-meters>span{padding:6px}}
+
+
+/* Original cinematic art. Touch gestures remain on the parent card. */
+.menu-cover-image{
+  position:absolute;inset:0;width:100%;height:100%;
+  display:block;object-fit:cover;object-position:center 39%;
+  pointer-events:none;filter:saturate(.95) contrast(1.07);
+}
+.start-atmosphere:after{
+  position:absolute;content:'';inset:0;opacity:1;
+  background:linear-gradient(90deg,#05110db0,#07161136 85%),
+             linear-gradient(180deg,#05120d45 0%,#07150f8f 41%,#06110cdd 78%,#041008f1 100%);
+}
+.start-content{position:relative;z-index:1}
+.menu-heading h1,.menu-heading p,.menu-overline,.menu-brand{
+  text-shadow:0 3px 18px #000b;
+}
+.scene-photo{
+  position:absolute;inset:0;z-index:1;overflow:hidden;
+  pointer-events:none;user-select:none;-webkit-user-select:none;
+  background:linear-gradient(135deg,#252b2e,#102619);
+}
+.scene-photo img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  object-position:center 41%;filter:saturate(.88) contrast(1.06);
+}
+.scene-photo:after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,#090f1015 0%,#0b17171c 35%,#08150c79 57%,#06110bed 88%,#06110b 100%);
+}
+.scene-photo-romance img{object-position:76% 36%;filter:saturate(.94) hue-rotate(-9deg)}
+.scene-photo-romance:after{background:linear-gradient(180deg,#2113230a 2%,#23112240 43%,#0b1022a6 75%,#081010fb 100%)}
+.scene-photo-night img{object-position:82% 34%;filter:saturate(1.11) brightness(.82)}
+.scene-photo-night:after{background:linear-gradient(180deg,#1e12300d 1%,#170d2b57 56%,#070a17f2 95%)}
+.scene-photo-media img{object-position:87% 38%;filter:saturate(.78) contrast(1.15)}
+.scene-photo-media:after{background:linear-gradient(180deg,#10152504 0%,#0b1c2c70 60%,#07121cf7 100%)}
+.scene-photo-contract img{object-position:65% 53%;filter:saturate(.72) sepia(.18) brightness(.87)}
+.scene-photo-contract:after{background:linear-gradient(180deg,#1b1c1105 0%,#1b1d155c 55%,#09150bf0 100%)}
+.scenario-copy{z-index:3}
+.drag-choice{z-index:4}
+@media(prefers-reduced-motion:reduce){.scene-photo img,.menu-cover-image{filter:none}}
