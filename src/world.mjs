@@ -1,6 +1,7 @@
 import * as T from '../vendor/three.module.js';
 import { seeded, inside, closestRoad, collisionAt, distance } from './core.mjs';
 import {visualLandcoverSites} from './landscape.mjs';
+import {buildLocalStudy} from './local-scene.mjs';
 export { T };
 const palette = ['#c8b4a1','#b8c2bb','#c4bfb0','#d3c4af','#a9b7c0','#cebcae'];
 function noiseTexture(base, spread = 18) {
@@ -95,6 +96,7 @@ export async function buildWorld(scene,world,onProgress=()=>{}) {
   for(const list of chunks.values()){const m=new T.Mesh(mergeGeometries(list),walls);m.castShadow=true;m.receiveShadow=true;scene.add(m);}
   const roofMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.92,side:T.DoubleSide});
   for(const list of roofChunks.values()){const mesh=new T.Mesh(mergeGeometries(list),roofMat);mesh.receiveShadow=true;scene.add(mesh);}
+  const localStudy=buildLocalStudy(scene,world);
   const rng=seeded(634),trees=[],trunks=[],conifers=[],understory=[],lampPosts=[],lampHeads=[];
   for(const r of world.roads.filter(r=>r.drive&&r.width>=7))for(let i=1;i<r.points.length;i++){
     const a=r.points[i-1],b=r.points[i],len=distance(a,b);if(len<25)continue;const nx=(b.z-a.z)/len,nz=-(b.x-a.x)/len;
@@ -122,7 +124,7 @@ export async function buildWorld(scene,world,onProgress=()=>{}) {
   instances(new T.IcosahedronGeometry(1,0),new T.MeshStandardMaterial({color:'#5f7f52',roughness:1,flatShading:true}),understory,false);
   instances(new T.CylinderGeometry(.07,.12,7.2,5),new T.MeshStandardMaterial({color:'#667077',metalness:.6,roughness:.5}),lampPosts,false);
   const lampMat=new T.MeshStandardMaterial({color:'#ece9d0',emissive:'#ffcc7e',emissiveIntensity:.05});instances(new T.BoxGeometry(.75,.14,.4),lampMat,lampHeads,false);
-  onProgress(1);return {setNight(n){uniforms.night.value=n?1:0;lampMat.emissiveIntensity=n?2:.05;},trees:trees.length+conifers.length,landscape:{...landcover.metadata,roofCount:world.buildings.length}};
+  onProgress(1);return {setNight(n){uniforms.night.value=n?1:0;lampMat.emissiveIntensity=n?2:.05;},trees:trees.length+conifers.length,landscape:{...landcover.metadata,roofCount:world.buildings.length,...localStudy.stats}};
 }
 function roundedBox(w,h,l,r=.1){const s=new T.Shape();s.moveTo(-w/2+r,-h/2);s.lineTo(w/2-r,-h/2);s.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);s.lineTo(w/2,h/2-r);s.quadraticCurveTo(w/2,h/2,w/2-r,h/2);s.lineTo(-w/2+r,h/2);s.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);s.lineTo(-w/2,-h/2+r);s.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);const g=new T.ExtrudeGeometry(s,{depth:l,bevelEnabled:true,bevelSize:.04,bevelThickness:.04,bevelSegments:1,steps:1,curveSegments:3});g.translate(0,0,-l/2);return g;}
 export function makeCar(color='#268c9c',detailed=true){
