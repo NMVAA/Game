@@ -4,7 +4,7 @@ export const EYE_HEIGHT=1.68;
 export const WALK_RADIUS=.34;
 export function createWalker(spawn={x:0,z:0,angle:0}){
   return {x:finite(spawn.x),z:finite(spawn.z),yaw:finite(spawn.angle),pitch:0,
-    vx:0,vz:0,speed:0,vertical:0,vy:0,stamina:100,travel:0,stepPhase:0};
+    vx:0,vz:0,speed:0,vertical:0,vy:0,jumpHeld:false,stamina:100,travel:0,stepPhase:0};
 }
 export function lookAround(w,dx,dy,sensitivity=.0034){
   w.yaw+=clamp(finite(dx),-250,250)*sensitivity;
@@ -33,7 +33,11 @@ export function stepWalker(w,input,dt,world,vehicle=null){
   const blend=1-Math.exp(-(magnitude>0?12:17)*dt);
   w.vx+=(x-w.vx)*blend;w.vz+=(z-w.vz)*blend;
   w.stamina=clamp(w.stamina+(sprint?-20:12)*dt,0,100);
-  if(input.jump&&w.vertical<=.001){w.vy=4.2;w.vertical=.001;}
+  // A jump is triggered by a new press, not every time the player lands.
+  // Long touch presses therefore cannot cause involuntary bunny-hopping.
+  const jumpPressed=!!input.jump;
+  if(jumpPressed&&!w.jumpHeld&&w.vertical<=.001){w.vy=4.2;w.vertical=.001;}
+  w.jumpHeld=jumpPressed;
   w.vy-=12.5*dt;w.vertical=Math.max(0,w.vertical+w.vy*dt);if(!w.vertical)w.vy=0;
   const old={x:w.x,z:w.z},dx=w.vx*dt,dz=w.vz*dt;
   const clear=p=>!collisionAt(world,p,WALK_RADIUS)&&(!vehicle||distance(p,vehicle)>=2.15);
