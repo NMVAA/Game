@@ -211,8 +211,8 @@ export function resolveAdultChoice(g,id){
  const state=initAdultLife(g),day=storyDay(g);
  // Press stories can outlive a breakup: public reputation survives relationships.
  if(!ctx&&type==='media'){
-   if(action==='boundaries'){state.privacyRisk=clamp(state.privacyRisk-18);add(g,{reputation:-3,stress:4});}
-   else {state.privacyRisk=clamp(state.privacyRisk+12);add(g,{reputation:4,stress:6});}
+   if(action==='boundaries'){state.privacyRisk=clamp(state.privacyRisk-18);g.story.scandal=clamp((g.story.scandal||0)-8);add(g,{reputation:-3,stress:4});}
+   else {state.privacyRisk=clamp(state.privacyRisk+12);g.story.scandal=clamp((g.story.scandal||0)+6);add(g,{reputation:4,stress:6});}
    state.lastChoiceDay=day;state.choiceCount++;
    const message=action==='boundaries'?'Ти захистив приватність навіть після розриву.':'Преса отримала коментар. Колишні стосунки ще впливають на репутацію.';
    trace(g,'media:'+action,message);
@@ -270,6 +270,7 @@ export function resolveAdultChoice(g,id){
  if(type==='privacy'){
   if(action==='public'){
    state.privacyRisk=clamp(state.privacyRisk+20);v.publicity=clamp(v.publicity+20);
+   g.story.scandal=clamp((g.story.scandal||0)+9);
    relation(g,{bond:8,trust:3});
    add(g,{reputation:3,stress:3});
    delayed(g,'Photo',3,personId);
@@ -333,6 +334,7 @@ export function resolveAdultChoice(g,id){
    return result('Твоя чесність запобігла чуткам. Партнер запам’ятав розмову.');
   }
   v.hiddenHistory=clamp(v.hiddenHistory+18);state.privacyRisk=clamp(state.privacyRisk+6);
+  g.story.scandal=clamp((g.story.scandal||0)+7);
   relation(g,{trust:-8,tension:7});
   delayed(g,'SecretDiscovery',5,personId);
   return result('Розмову відкладено. Пізніше ця деталь може зруйнувати довіру.');
@@ -341,6 +343,7 @@ export function resolveAdultChoice(g,id){
   if(action==='party'){
    add(g,{money:-Math.min(g.money,370),energy:-17,stress:7,morale:7});
    state.privacyRisk=clamp(state.privacyRisk+19);
+   g.story.scandal=clamp((g.story.scandal||0)+12);
    delayed(g,'MediaLeak',3,personId);
    return result('Вечірка подарувала нові знайомства. Журналісти зацікавилися твоїм оточенням.');
   }
@@ -350,6 +353,7 @@ export function resolveAdultChoice(g,id){
  if(type==='secret'){
   if(action==='meet'){
    v.hiddenHistory=clamp(v.hiddenHistory+28);state.privacyRisk=clamp(state.privacyRisk+25);
+   g.story.scandal=clamp((g.story.scandal||0)+13);
    relation(g,{trust:-10,tension:6});
    add(g,{stress:12,energy:-10,morale:5});
    loyalty('secret_appointment','Ти приховав приватну зустріч з іншою дорослою людиною.',{trust:-10,resentment:12,loyalty:-8});
@@ -368,6 +372,7 @@ export function resolveAdultChoice(g,id){
   }
   add(g,{money:500,reputation:3});
   state.privacyRisk=clamp(state.privacyRisk+13);
+  g.story.scandal=clamp((g.story.scandal||0)+9);
   delayed(g,'MediaLeak',5,personId);
   return result('Інтерв’ю принесло гроші. Редакція може перекрутити твої слова.');
  }
@@ -385,6 +390,7 @@ export function resolveAdultChoice(g,id){
   if(action==='protect'){
    relation(g,{trust:11});add(g,{reputation:-2,stress:5});
    state.privacyRisk=clamp(state.privacyRisk-17);
+   g.story.scandal=clamp((g.story.scandal||0)-7);
    delayed(g,'MediaLeak',9,personId);
    return result('Ти захистив партнера. Спонсор став уважніше перевіряти репутацію.');
   }
@@ -415,6 +421,7 @@ export function resolveAdultChoice(g,id){
   v.hiddenHistory=clamp(v.hiddenHistory+23);
   relation(g,{trust:-24,tension:23});
   state.privacyRisk=clamp(state.privacyRisk+25);
+  g.story.scandal=clamp((g.story.scandal||0)+19);
   delayed(g,'MediaLeak',6,personId);
   delayed(g,'Repair',9,personId);
   return result('Заперечення збільшили недовіру. Ризик публічного скандалу зростає.');
@@ -422,12 +429,14 @@ export function resolveAdultChoice(g,id){
  if(type==='media'){
   if(action==='boundaries'){
    state.privacyRisk=clamp(state.privacyRisk-22);
+   g.story.scandal=clamp((g.story.scandal||0)-12);
    relation(g,{trust:6});
    add(g,{reputation:-3,stress:4});
    return result('Ти попросив пресу поважати приватність. Деякі спонсори незадоволені.');
   }
   add(g,{reputation:5,stress:6});
   state.privacyRisk=clamp(state.privacyRisk+12);
+  g.story.scandal=clamp((g.story.scandal||0)+7);
   relation(g,{trust:-4,tension:6});
   return result('Коментар знизив тиск зараз, але відкрив деталі для подальших питань.');
  }
