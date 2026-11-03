@@ -4,7 +4,7 @@ export const EYE_HEIGHT=1.68;
 export const WALK_RADIUS=.34;
 export function createWalker(spawn={x:0,z:0,angle:0}){
   return {x:finite(spawn.x),z:finite(spawn.z),yaw:finite(spawn.angle),pitch:0,
-    vx:0,vz:0,speed:0,vertical:0,vy:0,jumpHeld:false,stamina:100,travel:0,stepPhase:0};
+    vx:0,vz:0,speed:0,vertical:0,vy:0,jumpHeld:false,stamina:100,exhausted:false,travel:0,stepPhase:0};
 }
 /** Convert thumb displacement into analog walking axes with a radial dead zone. */
 export function walkPadAxes(clientX,clientY,rect){
@@ -37,13 +37,15 @@ export function stepWalker(w,input,dt,world,vehicle=null){
   dt=clamp(finite(dt),0,1/30);if(!dt)return;
   let forward=clamp(finite(input.forward),-1,1),strafe=clamp(finite(input.strafe),-1,1);
   const magnitude=Math.hypot(forward,strafe);if(magnitude>1){forward/=magnitude;strafe/=magnitude;}
-  const sprint=!!input.sprint&&forward>.1&&w.stamina>3;
+  // Exhaustion uses hysteresis: don't alternate sprint/walk every few frames
+  // around zero stamina while the player holds the run button.
+  if(w.exhausted&&w.stamina>=30)w.exhausted=false;
+  const sprint=!!input.sprint&&forward>.1&&!w.exhausted&&w.stamina>0;
   const targetSpeed=sprint?5.3:2.55;
   const x=(Math.sin(w.yaw)*forward+Math.cos(w.yaw)*strafe)*targetSpeed;
   const z=(Math.cos(w.yaw)*forward-Math.sin(w.yaw)*strafe)*targetSpeed;
   const blend=1-Math.exp(-(magnitude>0?12:17)*dt);
   w.vx+=(x-w.vx)*blend;w.vz+=(z-w.vz)*blend;
-  w.stamina=clamp(w.stamina+(sprint?-20:12)*dt,0,100);
   // A jump is triggered by a new press, not every time the player lands.
   // Long touch presses therefore cannot cause involuntary bunny-hopping.
   const jumpPressed=!!input.jump;
@@ -61,5 +63,9 @@ export function stepWalker(w,input,dt,world,vehicle=null){
   }
   const moved=distance(old,w);
   w.travel+=moved;w.speed=moved/dt;
+  // Standing against a wall must not consume stamina just because sprint
+  // is pressed. Drain only while the character is actually moving fast.
+  w.stamina=clamp(w.stamina+(sprint&&w.speed>3.25?-20:12)*dt,0,100);
+  if(w.stamina<=0)w.exhausted=true;
   if(moved>.001)w.stepPhase+=moved*(sprint?2.8:2.45);
 }

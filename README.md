@@ -1,5 +1,11 @@
 # Game
 
+## Version 0.4.9 — Reliable stamina and sprint exhaustion
+
+- Sustained running now enters an exhausted state when stamina reaches zero. Sprint stays disabled until stamina recovers to 30%, preventing rapid speed flicker while the run button is held.
+- Sprinting into a wall no longer consumes stamina: energy drains only when actual walking speed exceeds the sprint threshold.
+- Added regression tests for held-sprint exhaustion, recovery and blocked movement; updated the versioned PWA cache.
+
 ## Version 0.4.8 — More precise touch walking controls
 
 - Added a 14% radial dead zone to the first-person walking thumbstick, preventing slow drift when a finger rests near the centre; analog movement is smoothly rescaled to full speed at the rim.

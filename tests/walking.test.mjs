@@ -84,3 +84,26 @@ test('walker stays inside playable bounds and outside parked vehicle',()=>{
   assert.ok(w.x>=env.bounds.minX&&w.x<=env.bounds.maxX);
   assert.ok(w.z>=env.bounds.minZ&&w.z<=env.bounds.maxZ);
 });
+
+test('sprint exhaustion has a recovery buffer instead of rapid speed flicker',()=>{
+  const w=createWalker(),env=world(),run={forward:1,sprint:true};
+  advance(w,run,5.5,env);
+  assert.equal(w.exhausted,true,'running out of stamina should trigger exhaustion');
+  assert.ok(w.speed<3.1,'the player must slow to a walk when exhausted');
+  advance(w,run,.8,env);
+  assert.equal(w.exhausted,true,'holding sprint cannot immediately restart after a tiny recovery');
+  assert.ok(w.speed<3.1);
+  advance(w,run,1.7,env);
+  assert.equal(w.exhausted,false,'running can resume once stamina has recovered sufficiently');
+  assert.ok(w.speed>4,'sprint should re-engage after the recovery threshold');
+});
+test('holding sprint against an obstacle cannot drain stamina while stationary',()=>{
+  const w=createWalker({x:0,z:0,angle:0}),env=world();
+  const block={minX:-2,maxX:2,minZ:2,maxZ:4,poly:[{x:-2,z:2},{x:2,z:2},{x:2,z:4},{x:-2,z:4}]};
+  env.obstacles.insert(block,-2,2,2,4);
+  w.stamina=65;
+  advance(w,{forward:1,sprint:true},3,env);
+  assert.ok(w.z<2,'the obstacle should still stop forward movement');
+  assert.ok(w.speed<.1,'the character should be stationary at the wall');
+  assert.ok(w.stamina>90,'stamina must recover rather than drain against a wall');
+});
