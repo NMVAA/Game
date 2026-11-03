@@ -281,6 +281,7 @@ function ChoiceOutcome({outcome,onContinue}){
   initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}}>
   <motion.div className="choice-outcome-sheet" initial={{y:32,scale:.96}} animate={{y:0,scale:1}}
    exit={{y:18,opacity:0}} transition={{type:'spring',stiffness:340,damping:30}}>
+   <div className="outcome-scroll">
    <div className="outcome-kicker">РЕЗУЛЬТАТ ВИБОРУ</div>
    {plot&&<div className="outcome-story">{plot.name} · Розділ {plot.chapter}/{plot.total}</div>}
    <p className="outcome-situation">{outcome.context}</p>
@@ -315,10 +316,13 @@ function ChoiceOutcome({outcome,onContinue}){
       <p className="outcome-empty">Нових відкладених подій поки не заплановано. Попередні рішення залишаються в історії.</p>}
     {plot?.ending&&<div className="outcome-verdict">Підсумок сюжету: <strong>{plot.ending}</strong></div>}
    </section>
+   </div>
+   <div className="outcome-footer">
    <button className="outcome-continue" type="button" onClick={onContinue}>
      ДАЛІ ДО ІСТОРІЇ <span>→</span>
    </button>
    <p className="outcome-auto">Прочитай результат у своєму темпі. Нічого не зникне автоматично.</p>
+   </div>
   </motion.div>
  </motion.div>;
 }
