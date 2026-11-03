@@ -7,6 +7,7 @@ import {memorySummary} from '../memory.js';
 import {npcSnapshot} from '../npc.js';
 import {adultSnapshot} from '../adult-life.js';
 import {artForScene,artUrl} from './scene-art.js';
+import {plotSnapshot} from '../plot-engine.js';
 
 const clamp=(value)=>Math.max(0,Math.min(100,Number(value)||0));
 const HERO_ART=artUrl('stadium_tunnel');
@@ -35,7 +36,14 @@ const palettes={
  media:['#263c51','#c0deff','#142231'],
  night:['#20264c','#bdb4ff','#13182e']
 };
-const toneFor=scene=>kinds[scene?.id]||'contract';
+const toneFor=scene=>{
+ if(scene?.plot) return ({
+   stadium_tunnel:'stadium',training:'stadium',recovery:'stadium',
+   nightlife:'night',romance:'romance',intimacy:'romance',
+   conflict:'romance',transfer:'contract',press:'media',contract:'contract'
+ })[scene.art]||'contract';
+ return kinds[scene?.id]||'contract';
+};
 function getSaved(){return loadGame();}
 
 function Artwork({kind,match}){
@@ -113,11 +121,29 @@ function Meter({label,value,warn}){
  return <div className="meter"><div><small>{label}</small><b>{Math.round(clamp(value))}%</b></div><i><em style={{width:clamp(value)+'%',background:warn?'#f5a48f':'#b8f56d'}}/></i></div>;
 }
 function Journal({game,onClose}){
- const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game),adult=adultSnapshot(game);
+ const s=ensureStory(game),mem=memorySummary(game),world=npcSnapshot(game),adult=adultSnapshot(game),plots=plotSnapshot(game);
  return <motion.div className="journal-overlay" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={onClose}>
   <motion.section className="journal-panel" role="dialog" aria-modal="true" aria-label="Історія та наслідки" initial={{y:85}} animate={{y:0}} exit={{y:85}} transition={{type:'spring',stiffness:300,damping:28}} onClick={e=>e.stopPropagation()}>
     <div className="journal-title"><div><small>FOOTBALL LIFE</small><h2>Твої наслідки</h2></div><button type="button" onClick={onClose}>✕</button></div>
     <div className="journal-stats"><span>Рейтинг <b>{scorePlayer(game)}</b></span><span>Клуб <b>{Math.round(s.clubTrust)}%</b></span><span>Агент <b>{Math.round(s.agentTrust)}%</b></span><span>Скандали <b>{Math.round(s.scandal)}%</b></span></div>
+    <details className="plot-details" open>
+     <summary>СЮЖЕТНІ ЛАНЦЮГИ <span>{plots.started}/{plots.total} розпочато · {plots.completed} завершено</span></summary>
+     <div className="plot-list">
+      {plots.threads.length?plots.threads.map(t=>
+       <article className={'plot-entry state-'+t.status} key={t.id}>
+        <div className="plot-entry-head"><b>{t.name}</b>
+         <span>{t.status==='completed'?'Завершено':t.status==='aftermath'?'Післянаслідки':'У розвитку'}</span></div>
+        <div className="plot-entry-step"><small>{t.category} · {t.phase}</small><strong>{t.chapter} / {t.total}</strong></div>
+        <div className="plot-entry-progress"><i style={{width:((t.status==='completed'?7:t.chapter-1)/7*100)+'%'}}/></div>
+        {t.ending&&<p className="plot-ending">Фінал: {t.ending}</p>}
+        {t.last&&<p>{t.last}</p>}
+        {t.nextDays!==null&&<small>Наступна глава через {t.nextDays} ігрових днів</small>}
+       </article>):<p className="plot-none">Перший сюжет відкриється на початку кар’єри.</p>}
+     </div>
+     <div className="plot-next"><strong>НАСТУПНІ СЮЖЕТИ</strong>
+       <p>{plots.nextUnlocked.length?plots.nextUnlocked.join(' · '):'Усі основні історії вже відкрито'}</p>
+     </div>
+    </details>
     <details className="memory-details" open><summary>ПАМ’ЯТЬ ПЕРСОНАЖІВ <span>{mem.promises.length} обіцянок · {mem.consequences} майбутніх наслідків</span></summary>
       <div className="memory-actors">
       {mem.actors.filter(a=>a.id==='coach'||a.id==='agent'||a.id==='captain'||a.id.startsWith('partner:')).map(a=>
@@ -198,7 +224,11 @@ function SwipeCard({scene,onChoice}){
    </div>
    <motion.div className="drag-choice left" style={{opacity:left}}><span>← ОБРАНО</span><b>{scene.a.label}</b></motion.div>
    <motion.div className="drag-choice right" style={{opacity:right}}><span>ОБРАНО →</span><b>{scene.b.label}</b></motion.div>
-   <div className="scenario-copy"><div className="scenario-tag">{scene.tag}<span>21+</span></div><h1>{scene.title}</h1><p className={scene.major?'long':''}>{scene.text}</p></div>
+   <div className="scenario-copy">
+     {scene.plot&&<div className="plot-chapter"><span>{scene.plot.phase}</span>
+       <b>{scene.plot.name} · {scene.plot.chapter}/{scene.plot.total}</b>
+     </div>}
+     <div className="scenario-tag">{scene.tag}<span>21+</span></div><h1>{scene.title}</h1><p className={scene.major?'long':''}>{scene.text}</p></div>
  </motion.div>;
 }
 function Controls({game,scene,onChoice}){
